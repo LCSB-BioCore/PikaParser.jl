@@ -7,6 +7,13 @@
 $(TYPEDEF)
 
 Abstract type for all clauses that match a grammar with rule labels of type `G`.
+
+Currently implemented clauses:
+- [`Terminal`](@ref)
+- [`Seq`](@ref)
+- [`First`](@ref)
+- [`NotFollowedBy`](@ref)
+- [`OneOrMore`](@ref)
 """
 abstract type Clause{G} end
 
