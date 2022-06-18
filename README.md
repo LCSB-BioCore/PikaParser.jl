@@ -5,7 +5,7 @@ A simple straightforward implementation of PikaParser in pure Julia, following
 the specification by Luke A. D. Hutchinson (see
 https://github.com/lukehutch/pikaparser).
 
-Pika parsers are pretty fast, it is easy to specify them, carry the ability to
+Pika parsers are pretty fast, they are easy to specify, carry the ability to
 unambigously match all PEG grammars including the left-recursive ones, and
 provide great mechanisms for parsing error recovery.
 
@@ -134,3 +134,5 @@ P.traverse_match(g, p, 45, :expr,
         rule == :minusexpr ? subvals[1] - subvals[3] :
         nothing)
 ```
+
+You should get the expectable result (`-581`).

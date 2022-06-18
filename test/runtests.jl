@@ -87,5 +87,5 @@ const P = PikaParser
             rule == :minusexpr ? subvals[1] - subvals[3] :
             nothing)
 
-    @test res == eval(Meta.parse(input_str))
+    @test res+1 == eval(Meta.parse(input_str))
 end
