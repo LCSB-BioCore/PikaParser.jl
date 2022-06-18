@@ -6,7 +6,7 @@
 """
 $(TYPEDEF)
 
-Abstract type for all clauses that match a grammar with G-typed nonterminals.
+Abstract type for all clauses that match a grammar with rule labels of type `G`.
 """
 abstract type Clause{G} end
 
@@ -86,16 +86,16 @@ A representation of the grammar prepared for parsing.
 $(TYPEDFIELDS)
 """
 struct Grammar{G}
-    "Topologically sorted list of non-terminals"
+    "Topologically sorted list of rule labels (non-terminals)"
     names::Vector{G}
 
-    "Mapping of non-terminal names to their indexes"
+    "Mapping of rule labels to their indexes in `names`"
     idx::Dict{G,Int}
 
     "Clauses of the grammar converted to integer labels (and again sorted topologically)"
     clauses::Vector{Clause{Int}}
 
-    "Flags for the non-terminals being able to match on empty string unconditionally"
+    "Flags for the rules being able to match on empty string unconditionally"
     can_match_epsilon::Vector{Bool}
 
     "Which clauses get seeded upon matching of a clause"
@@ -139,10 +139,17 @@ Internal match representation.
 $(TYPEDFIELDS)
 """
 struct Match
+    "Where the match started?"
     pos::Int
+
+    "How long is the match?"
     len::Int
+
+    "Which possibility did we match?"
     option_idx::Int
-    submatches::Vector{Int} #indexes to a vector of matches
+
+    "Indexes to the vector of matches. This forms the edges in the match tree."
+    submatches::Vector{Int}
 end
 
 """
@@ -176,7 +183,7 @@ struct UserMatch{G}
     "How long is the match?"
     len::Int
 
-    "Indexes and non-terminal labels of the matched submatches."
+    "Indexes and rule labels of the matched submatches. This forms the edges in the match tree."
     submatches::Vector{Tuple{Int,G}}
 end
 

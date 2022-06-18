@@ -2,10 +2,11 @@
 """
 $(TYPEDSIGNATURES)
 
-Produce a [`Grammar`](@ref) with nonterminals of type `G` that can be used to
+Produce a [`Grammar`](@ref) with rules of type `G` that can be used to
 [`parse`](@ref) inputs.
 
-`starts` should collect top-level nonterminals (these will be put at the top of the topological order of the parsing).
+`starts` should collect top-level rules (these will be put at the top of the
+topological order of the parsing).
 
 `rules_dict` is a dictionary of grammar clauses.
 """
