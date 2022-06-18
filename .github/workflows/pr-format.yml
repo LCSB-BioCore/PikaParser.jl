@@ -1,0 +1,62 @@
+on:
+  pull_request:
+  issue_comment:
+    types: [created]
+
+name: Formatting
+
+jobs:
+  formatting:
+    if: github.event_name == 'pull_request' || (github.event_name == 'issue_comment' && github.event.issue.pull_request && (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER' || github.event.issue.user.id == github.event.comment.user.id) && startsWith(github.event.comment.body, '/format') )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone the repository
+        uses: actions/checkout@v3
+      - name: Checkout the pull request code # this checks out the actual branch so that one can commit into it
+        if: github.event_name == 'issue_comment'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr checkout ${{ github.event.issue.number }}
+      - name: Install JuliaFormatter and format
+        run: |
+          julia --color=yes -e 'import Pkg; Pkg.add("JuliaFormatter")'
+          julia --color=yes -e 'using JuliaFormatter; format(".")'
+      - name: Remove trailing whitespace
+        run: |
+          find -name '*.jl' -or -name '*.md' -or -name '*.toml' -or -name '*.yml' | while read filename ; do
+            # remove any trailing spaces
+            sed --in-place -e 's/\s*$//' "$filename"
+            # add a final newline if missing
+            if [[ -s "$filename" && $(tail -c 1 "$filename" |wc -l) -eq 0 ]] ; then
+              echo >> "$filename"
+            fi
+            # squash superfluous final newlines
+            sed -i -e :a -e '/^\n*$/{$d;N;};/\n$/ba' "$filename"
+          done
+      - name: Fail on formatting problems
+        if: github.event_name == 'pull_request'
+        run: |
+          if git diff --exit-code --quiet
+          then echo "Looks OK"
+          else echo "Formatting fixes required!"; git diff -p ; exit 1
+          fi
+      - name: Commit fixes
+        if: github.event_name == 'issue_comment'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ `git status -s | wc -l` -ne 0 ] ; then
+            git config --local user.name "$GITHUB_ACTOR"
+            git config --local user.email "$GITHUB_ACTOR@users.noreply.github.com"
+            git commit -a -m "automatic formatting" -m "triggered by @$GITHUB_ACTOR on PR #${{ github.event.issue.number }}"
+            if git push
+            then gh pr comment ${{ github.event.issue.number }} --body \
+              ":heavy_check_mark: Auto-formatting triggered by [this comment](${{ github.event.comment.html_url }}) succeeded, commited as `git rev-parse HEAD`"
+            else gh pr comment ${{ github.event.issue.number }} --body \
+              ":x: Auto-formatting triggered by [this comment](${{ github.event.comment.html_url }}) failed, perhaps someone pushed to the PR in the meantime?"
+            fi
+          else
+            then gh pr comment ${{ github.event.issue.number }} --body \
+              ":sunny: Auto-formatting triggered by [this comment](${{ github.event.comment.html_url }}) succeeded, but the code was already formatted correctly."
+          fi
