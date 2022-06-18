@@ -62,7 +62,7 @@ function traverse_match(
     rule::G;
     open::Function = (_, umatch) -> (true for _ in umatch.submatches),
     fold::Function = (rule, umatch, subvals) -> Expr(:call, rule, subvals...),
-) where G
+) where {G}
     rid = grammar.idx[rule]
 
     # TODO flatten the recursion here

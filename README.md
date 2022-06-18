@@ -124,15 +124,16 @@ It is straightforward to specify your own method of evaluating the parses by
 supplying the matchtree opening and folding functions. For example, you can
 evaluate the expression as follows:
 ```julia
-P.traverse_match(g, p, 45, :expr,
-    fold = (rule, umatch, subvals) ->
+P.traverse_match(g, p, P.find_match_at(g, p, :expr, 1), :expr,
+    fold = (rule, match, subvals) ->
         rule == :digits ?
-            parse(Int, String(input[umatch.pos:umatch.pos+umatch.len-1])) :
+        parse(Int, String(input[match.pos:match.pos+match.len-1])) :
         rule == :expr ? subvals[1] :
         rule == :parens ? subvals[2] :
         rule == :plusexpr ? subvals[1] + subvals[3] :
         rule == :minusexpr ? subvals[1] - subvals[3] :
-        nothing)
+        nothing,
+)
 ```
 
 You should get the expectable result (`-581`).
