@@ -87,7 +87,7 @@ of `:minusexpr`.
 You can use `traverse_match` to recursively walk the parse trees, to produce
 ASTs, and translate, interpret or evaluate the expressions:
 ```julia
-P.traverse_match(g, p, 45, :expr)
+P.traverse_match(g, p, P.find_match_at(g, p, :expr, 1), :expr)
 ```
 By default, this runs through the whole match tree and transcodes the matches
 to Julia `Expr` AST. In this case, if you pipe the output through

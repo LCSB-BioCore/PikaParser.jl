@@ -1,3 +1,6 @@
+"""
+$(README)
+"""
 module PikaParser
 
 using DataStructures
