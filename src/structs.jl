@@ -216,6 +216,6 @@ end
 $(TYPEDEF)
 
 A shortcut for possibly failed match result index (that points into
-[`ParserState`](@ref) field [`matches`](@ref)).
+[`ParserState`](@ref) field `matches`.
 """
 const MatchResult = Maybe{Int}
