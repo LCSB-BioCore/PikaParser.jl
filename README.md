@@ -9,6 +9,13 @@ Pika parsers are pretty fast, they are easy to specify, carry the ability to
 unambigously match all PEG grammars including the left-recursive ones, and
 provide great mechanisms for parsing error recovery.
 
+The code is new, **feedback is welcome**. Stuff that will eventually appear:
+- more grammar rules like `ZeroOrMore`, `FollowedBy`, easier terminals
+  (`Sequence("somekeyword")`)
+- nested grammar rules (`NotFollowedBy(Token('.'))`)
+- 1-command interface for collecting full parses
+- possibly some nicer traversal method
+
 ## Example
 
 ```julia
