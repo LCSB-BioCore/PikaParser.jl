@@ -226,3 +226,20 @@ A shortcut for possibly failed match result index (that points into
 [`ParserState`](@ref) field `matches`.
 """
 const MatchResult = Maybe{Int}
+
+"""
+$(TYPEDEF)
+
+Part of intermediate tree traversing state.
+
+# Fields
+$(TYPEDFIELDS)
+"""
+mutable struct TraverseNode{G}
+    parent_idx::Int
+    parent_sub_idx::Int
+    rule::G
+    match::UserMatch
+    open::Bool
+    subvals::Vector
+end

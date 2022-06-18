@@ -63,19 +63,54 @@ function traverse_match(
     open::Function = (_, umatch) -> (true for _ in umatch.submatches),
     fold::Function = (rule, umatch, subvals) -> Expr(:call, rule, subvals...),
 ) where {G}
-    rid = grammar.idx[rule]
-
-    # TODO flatten the recursion here
-
-    v = user_view(grammar.clauses[rid], parse, mid, grammar.names)
-    isnothing(v) && return nothing
-
-    fold(
+    stk = TraverseNode{G}[TraverseNode(
+        0,
+        0,
         rule,
-        v,
-        [
-            proceed ? traverse_match(grammar, parse, cmid, crule; open, fold) : nothing for
-            (proceed, (cmid, crule)) in zip(open(rule, v), v.submatches)
-        ],
-    )
+        user_view(grammar.clauses[grammar.idx[rule]], parse, mid, grammar.names),
+        false,
+        Any[],
+    )]
+
+    while true
+        # note: `while true` looks a bit crude, right?. Isn't there an iterator
+        # that would generate nothing forever, ideally called `forever`?
+        cur = last(stk)
+        if !cur.open
+            cur.open = true
+            cur.subvals = Any[nothing for _ in eachindex(cur.match.submatches)]
+            mask = collect(open(cur.rule, cur.match))
+            parent_idx = length(stk)
+            # push in reverse order so that it is still evaluated "forward"
+            for i in reverse(eachindex(cur.subvals))
+                if mask[i]
+                    submid, subrule = cur.match.submatches[i]
+                    push!(
+                        stk,
+                        TraverseNode(
+                            parent_idx,
+                            i,
+                            subrule,
+                            user_view(
+                                grammar.clauses[grammar.idx[subrule]],
+                                parse,
+                                submid,
+                                grammar.names,
+                            ),
+                            false,
+                            Any[],
+                        ),
+                    )
+                end
+            end
+        else
+            val = fold(cur.rule, cur.match, cur.subvals)
+            if cur.parent_idx == 0
+                return val
+            end
+
+            stk[cur.parent_idx].subvals[cur.parent_sub_idx] = val
+            pop!(stk)
+        end
+    end
 end
