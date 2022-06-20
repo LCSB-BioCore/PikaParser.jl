@@ -2,7 +2,7 @@
 # PikaParser.jl
 
 A simple straightforward implementation of PikaParser in pure Julia, following
-the specification by Luke A. D. Hutchinson (see
+the specification by Luke A. D. Hutchison (see
 https://github.com/lukehutch/pikaparser).
 
 Pika parsers are pretty fast, they are easy to specify, carry the ability to
