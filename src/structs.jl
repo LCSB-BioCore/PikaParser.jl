@@ -33,8 +33,52 @@ end
 """
 $(TYPEDEF)
 
+A single terminal. Given the input stream and a position in it, the `match`
+function returns the length of the match, or `nothing` if there's no match.
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct Terminals{G} <: Clause{G}
+    match::Function
+end
+
+"""
+$(TYPEDEF)
+
+A single token equal to `match`.
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct Token{G} <: Clause{G}
+    token::Any #TODO carry the token type in the parameter?
+end
+
+"""
+$(TYPEDEF)
+
+A series of tokens equal to `match`.
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct Tokens{G} <: Clause{G}
+    tokens::Vector
+end
+
+"""
+$(TYPEDEF)
+
+An always-succeeding epsilon match.
+"""
+struct Epsilon{G} <: Clause{G} end
+
+"""
+$(TYPEDEF)
+
 Sequence of matches. Empty `Seq` is equivalent to an always-succeeding empty
-match (aka "epsilon").
+match, as in [`Epsilon`](@ref).
 
 # Fields
 $(TYPEDFIELDS)
@@ -71,13 +115,37 @@ end
 """
 $(TYPEDEF)
 
+Zero-length match that succeeds if `follow` does match at the same position.
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct FollowedBy{G} <: Clause{G}
+    follow::G
+end
+
+"""
+$(TYPEDEF)
+
 Greedily matches a sequence of matches, with at least 1 match.
 
 # Fields
 $(TYPEDFIELDS)
 """
 struct OneOrMore{G} <: Clause{G}
-    match::G
+    item::G
+end
+
+"""
+$(TYPEDEF)
+
+Greedily matches a sequence of matches that can be empty.
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct ZeroOrMore{G} <: Clause{G}
+    item::G
 end
 
 #
