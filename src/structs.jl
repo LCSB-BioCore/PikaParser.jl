@@ -9,11 +9,15 @@ $(TYPEDEF)
 Abstract type for all clauses that match a grammar with rule labels of type `G`.
 
 Currently implemented clauses:
-- [`Terminal`](@ref)
+- [`Satisfy`](@ref)
+- [`TakeN`](@ref)
+- [`Token`](@ref)
+- [`Tokens`](@ref)
 - [`Seq`](@ref)
 - [`First`](@ref)
 - [`NotFollowedBy`](@ref)
 - [`OneOrMore`](@ref)
+- [`ZeroOrMore`](@ref)
 """
 abstract type Clause{G} end
 
@@ -26,7 +30,7 @@ function returns `true`.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Terminal{G} <: Clause{G}
+struct Satisfy{G} <: Clause{G}
     match::Function
 end
 
@@ -39,7 +43,7 @@ function returns the length of the match, or `nothing` if there's no match.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Terminals{G} <: Clause{G}
+struct TakeN{G} <: Clause{G}
     match::Function
 end
 

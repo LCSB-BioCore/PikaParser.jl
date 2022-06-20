@@ -9,18 +9,15 @@ const P = PikaParser
 @testset "Run example from README" begin
 
     rules = Dict{Symbol,P.Clause{Symbol}}(
-        # Terminal matches if the boolean function matches on input token.
-        :plus => P.Terminal{Symbol}(==('+')),
-        :minus => P.Terminal{Symbol}(==('-')),
-        :digit => P.Terminal{Symbol}(isdigit),
-        :digits => P.OneOrMore(:digit), # greedy repetition
-        :plusexpr => P.Seq([:expr, :plus, :expr]), # sequence of matches
+        :plus => P.Token{Symbol}('+'),
+        :minus => P.Token{Symbol}('-'),
+        :digit => P.Satisfy{Symbol}(isdigit),
+        :digits => P.OneOrMore(:digit),
+        :plusexpr => P.Seq([:expr, :plus, :expr]),
         :minusexpr => P.Seq([:expr, :minus, :expr]),
-        :popen => P.Terminal{Symbol}(==('(')),
-        :pclose => P.Terminal{Symbol}(==(')')),
+        :popen => P.Token{Symbol}('('),
+        :pclose => P.Token{Symbol}(')'),
         :parens => P.Seq([:popen, :expr, :pclose]),
-
-        # return whichever first match
         :expr => P.First([:plusexpr, :minusexpr, :digits, :parens]),
     )
 

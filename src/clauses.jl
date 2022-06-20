@@ -3,7 +3,7 @@
 # Clause implementation
 #
 
-isterminal(x::Union{Terminal,Terminals,Token,Tokens}) = true
+isterminal(x::Union{Satisfy,TakeN,Token,Tokens}) = true
 isterminal(x::Clause) = false
 
 
@@ -37,8 +37,8 @@ function child_clauses(x::ZeroOrMore{G})::Vector{G} where {G}
 end
 
 
-translate(d, x::Terminal) = Terminal{valtype(d)}(x.match)
-translate(d, x::Terminals) = Terminals{valtype(d)}(x.match)
+translate(d, x::Satisfy) = Satisfy{valtype(d)}(x.match)
+translate(d, x::TakeN) = TakeN{valtype(d)}(x.match)
 translate(d, x::Token) = Token{valtype(d)}(x.token)
 translate(d, x::Tokens) = Tokens{valtype(d)}(x.tokens)
 translate(d, x::Seq) = Seq(getindex.(Ref(d), x.children))
@@ -87,9 +87,9 @@ better_match_than(::First, new::Match, old::Match) =
 better_match_than(::Clause, new::Match, old::Match) = new.len > old.len
 
 
-can_match_epsilon(x::Union{Terminal,Terminals,Token,Tokens}, ::Vector{Bool}) = false
+can_match_epsilon(x::Union{Satisfy,TakeN,Token,Tokens}, ::Vector{Bool}) = false
 can_match_epsilon(x::Nothing, ::Vector{Bool}) = true
-can_match_epsilon(x::Terminal, ::Vector{Bool}) = false
+can_match_epsilon(x::Satisfy, ::Vector{Bool}) = false
 can_match_epsilon(x::Seq, ch::Vector{Bool}) = all(ch)
 can_match_epsilon(x::First, ch::Vector{Bool}) =
     isempty(ch) ? false :
@@ -105,13 +105,13 @@ can_match_epsilon(x::ZeroOrMore, ch::Vector{Bool}) = true
 # Clause matching
 #
 
-function match_clause!(x::Terminal, ::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::Satisfy, ::Int, pos::Int, st::ParserState)::MatchResult
     if x.match(st.input[pos])
         new_match!(Match(pos, 1, 0, []), st)
     end
 end
 
-function match_clause!(x::Terminals, ::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::TakeN, ::Int, pos::Int, st::ParserState)::MatchResult
     match_len = x.match(view(st.input, pos:length(st.input)))
     if !isnothing(match_len)
         new_match!(Match(pos, match_len, 0, []), st)
@@ -216,7 +216,7 @@ match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState) =
 #
 
 function user_view(
-    ::Union{Terminal,Terminals,Token,Tokens},
+    ::Union{Satisfy,TakeN,Token,Tokens},
     parse::ParseResult,
     mid::Int,
     d,

@@ -28,22 +28,23 @@ are free to use integers, strings, or anything else.
 
 ```julia
 rules = Dict{Symbol,P.Clause{Symbol}}(
-    # Terminal matches if the boolean function matches on input token.
-    :plus => P.Terminal{Symbol}(==('+')),
-    :minus => P.Terminal{Symbol}(==('-')),
+    # Token matches a single item in the input
+    :plus => P.Token{Symbol}('+'),
+    :minus => P.Token{Symbol}('-'),
 
-    :digit => P.Terminal{Symbol}(isdigit),
+    # Satisfy matches if the boolean function matches on input token.
+    :digit => P.Satisfy{Symbol}(isdigit),
     :digits => P.OneOrMore(:digit), # greedy repetition
 
     :plusexpr => P.Seq([:expr, :plus, :expr]), # sequence of matches
     :minusexpr => P.Seq([:expr, :minus, :expr]),
 
-    :popen => P.Terminal{Symbol}(==('(')),
-    :pclose => P.Terminal{Symbol}(==(')')),
+    :popen => P.Token{Symbol}('('),
+    :pclose => P.Token{Symbol}(')'),
     :parens => P.Seq([:popen, :expr, :pclose]),
 
     # the match is greedy -- take care about priority
-    :expr => P.First([:plusexpr, :minusexpr, :digits, :parens, ]),
+    :expr => P.First([:plusexpr, :minusexpr, :digits, :parens]),
 )
 
 g = P.make_grammar(
