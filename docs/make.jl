@@ -10,11 +10,9 @@ makedocs(
     strict = [:missing_docs, :cross_references],
 )
 
-#=
 deploydocs(
-    repo = "github.com/___???___/PikaParser.jl.git",
+    repo = "github.com/exaexa/PikaParser.jl.git",
     target = "build",
     branch = "gh-pages",
     push_preview = false,
 )
-=#
