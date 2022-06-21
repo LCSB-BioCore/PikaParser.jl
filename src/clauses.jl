@@ -37,16 +37,17 @@ function child_clauses(x::ZeroOrMore{G})::Vector{G} where {G}
 end
 
 
-translate(d, x::Satisfy) = Satisfy{valtype(d)}(x.match)
-translate(d, x::TakeN) = TakeN{valtype(d)}(x.match)
-translate(d, x::Token) = Token{valtype(d)}(x.token)
-translate(d, x::Tokens) = Tokens{valtype(d)}(x.tokens)
-translate(d, x::Seq) = Seq(getindex.(Ref(d), x.children))
-translate(d, x::First) = First(getindex.(Ref(d), x.children))
-translate(d, x::NotFollowedBy) = NotFollowedBy(d[x.reserved])
-translate(d, x::FollowedBy) = FollowedBy(d[x.follow])
-translate(d, x::OneOrMore) = OneOrMore(d[x.item])
-translate(d, x::ZeroOrMore) = ZeroOrMore(d[x.item])
+rechildren(x::Satisfy, v::Vector) = Satisfy{valtype(v)}(x.match)
+rechildren(x::TakeN, v::Vector) = TakeN{valtype(v)}(x.match)
+rechildren(x::Token, v::Vector) = Token{valtype(v)}(x.token)
+rechildren(x::Tokens, v::Vector) = Tokens{valtype(v)}(x.tokens)
+rechildren(x::Epsilon, v::Vector) = Epsilon{valtype(v)}()
+rechildren(x::Seq, v::Vector) = Seq{valtype(v)}(v)
+rechildren(x::First, v::Vector) = First{valtype(v)}(v)
+rechildren(x::NotFollowedBy, v::Vector) = NotFollowedBy{valtype(v)}(first(v))
+rechildren(x::FollowedBy, v::Vector) = FollowedBy{valtype(v)}(first(v))
+rechildren(x::OneOrMore, v::Vector) = OneOrMore{valtype(v)}(first(v))
+rechildren(x::ZeroOrMore, v::Vector) = ZeroOrMore{valtype(v)}(first(v))
 
 
 function seeded_by(x::Clause{G}, ::Vector{Bool})::Vector{G} where {G}
@@ -215,12 +216,7 @@ match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState) =
 # "User" view of the clauses, for parsetree traversing
 #
 
-function user_view(
-    ::Union{Satisfy,TakeN,Token,Tokens},
-    parse::ParseResult,
-    mid::Int,
-    d,
-)
+function user_view(::Union{Satisfy,TakeN,Token,Tokens}, parse::ParseResult, mid::Int, d)
     m = parse.matches[mid]
     UserMatch(m.pos, m.len, Tuple{Int,valtype(d)}[])
 end

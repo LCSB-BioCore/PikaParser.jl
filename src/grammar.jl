@@ -81,9 +81,59 @@ function make_grammar(
     Grammar{G}(
         first.(reordered),
         Dict{G,Int}(first.(reordered) .=> eachindex(reordered)),
-        translate.(Ref(name_idx), last.(reordered)),
+        Clause{Int}[
+            rechildren(cl, getindex.(Ref(name_idx), child_clauses(cl))) for
+            cl in last.(reordered)
+        ],
         emptiable,
         collect.(seed),
         [i for (i, r) in enumerate(reordered) if isterminal(last(r))],
     )
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Convert a possibly nested and wrongly typed `rules` into a correctly typed and
+unnested ruleset, usable in [`make_grammar`](@ref).
+
+Anonymous nested rules are assigned names that are constructed by concatenating
+the parent rule name, hyphen, and the position number.
+"""
+function flatten(rules::Dict{G})::Dict{G,Clause{G}} where {G}
+    todo = collect(rules)
+    res = Dict{G,Clause{G}}()
+
+    while !isempty(todo)
+        rid, clause = pop!(todo)
+        @info "going clause" rid clause
+        clause isa Clause || error(DomainError(rid => clause, "unsupported clause type"))
+        if haskey(res, rid)
+            error(DomainError(rid, "duplicate rule definition"))
+        end
+        tmp = rechildren(
+            clause,
+            [
+                begin
+                    @info "going subclause" rid ch typeof(ch)
+                    if ch isa G
+                        ch
+                    elseif ch isa Clause{G}
+                        newsym = Symbol(rid, :-, i)
+                        push!(todo, newsym => ch)
+                        newsym
+                    elseif ch isa Pair && first(ch) isa G && last(ch) isa Clause
+                        push!(todo, ch)
+                        first(ch)
+                    else
+                        error(DomainError(ch, "unsupported clause contents"))
+                    end
+                end for (i, ch) in enumerate(child_clauses(clause))
+            ],
+        )
+        @info "rechilded" tmp
+        res[rid] = tmp
+    end
+
+    res
 end

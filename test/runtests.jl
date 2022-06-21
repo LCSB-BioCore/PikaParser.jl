@@ -8,22 +8,22 @@ const P = PikaParser
 
 @testset "Run example from README" begin
 
-    rules = Dict{Symbol,P.Clause{Symbol}}(
-        :plus => P.Token{Symbol}('+'),
-        :minus => P.Token{Symbol}('-'),
-        :digit => P.Satisfy{Symbol}(isdigit),
-        :digits => P.OneOrMore(:digit),
-        :plusexpr => P.Seq([:expr, :plus, :expr]),
-        :minusexpr => P.Seq([:expr, :minus, :expr]),
-        :popen => P.Token{Symbol}('('),
-        :pclose => P.Token{Symbol}(')'),
-        :parens => P.Seq([:popen, :expr, :pclose]),
-        :expr => P.First([:plusexpr, :minusexpr, :digits, :parens]),
+    rules = Dict{Symbol,P.Clause}(
+        :digits => P.OneOrMore(:digit => P.Satisfy{Symbol}(isdigit)),
+        :parens => P.Seq([
+            P.Token{Symbol}('('),
+            :expr => P.First([:plusexpr, :minusexpr, :digits, :parens]),
+            P.Token{Symbol}(')'),
+        ]),
+        :plusexpr => P.Seq([:expr, P.Token{Symbol}('+'), :expr]),
+        :minusexpr => P.Seq([:expr, P.Token{Symbol}('-'), :expr]),
     )
+
+    rules_flat = P.flatten(rules)
 
     g = P.make_grammar(
         [:expr], # top-level rule
-        rules,
+        rules_flat,
     )
 
     @test last(g.names) == :expr
@@ -48,24 +48,24 @@ const P = PikaParser
     @test x == :(expr(
         minusexpr(
             expr(digits(digit(), digit())),
-            minus(),
+            var"minusexpr-2"(),
             expr(
                 parens(
-                    popen(),
+                    var"parens-1"(),
                     expr(
                         plusexpr(
                             expr(digits(digit(), digit())),
-                            plus(),
+                            var"plusexpr-2"(),
                             expr(
                                 minusexpr(
                                     expr(digits(digit(), digit(), digit())),
-                                    minus(),
+                                    var"minusexpr-2"(),
                                     expr(digits(digit())),
                                 ),
                             ),
                         ),
                     ),
-                    pclose(),
+                    var"parens-3"(),
                 ),
             ),
         ),
