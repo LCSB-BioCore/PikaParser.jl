@@ -1,6 +1,6 @@
 name = "PikaParser"
 uuid = "3bbf5609-3e7b-44cd-8549-7c69f321e792"
-authors = ["Mirek Kratochvil <exa.exa@gmail.com>"]
+authors = ["The developers of PikaParser.jl"]
 version = "0.1.0"
 
 [deps]
