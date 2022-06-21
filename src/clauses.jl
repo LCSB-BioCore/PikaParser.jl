@@ -167,11 +167,11 @@ function match_clause!(x::NotFollowedBy, ::Int, pos::Int, st::ParserState)::Matc
 end
 
 function match_clause!(x::FollowedBy, ::Int, pos::Int, st::ParserState)::MatchResult
-    mid = lookup_best_match_id!(MemoKey(x.reserved, pos), st)
+    mid = lookup_best_match_id!(MemoKey(x.follow, pos), st)
     if isnothing(mid)
         nothing
     else
-        new_match!(Match(pos, st.matches[mid].len, 1, [mid]), st)
+        new_match!(Match(pos, 0, 1, [mid]), st)
     end
 end
 
@@ -216,13 +216,10 @@ match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState) =
 # "User" view of the clauses, for parsetree traversing
 #
 
-function user_view(::Union{Satisfy,TakeN,Token,Tokens}, parse::ParseResult, mid::Int, d)
+function user_view(::Clause, parse::ParseResult, mid::Int, d)
+    # generic case
     m = parse.matches[mid]
     UserMatch(m.pos, m.len, Tuple{Int,valtype(d)}[])
-end
-
-function user_view(::Nothing, ::ParseResult, ::Int, _)
-    nothing
 end
 
 function user_view(x::Seq, parse::ParseResult, mid::Int, d)
@@ -235,13 +232,9 @@ function user_view(x::First, parse::ParseResult, mid::Int, d)
     UserMatch(m.pos, m.len, [(m.submatches[1], d[x.children[m.option_idx]])])
 end
 
-function user_view(::NotFollowedBy, ::ParseResult, ::Int, _)
-    nothing
-end
-
 function user_view(x::FollowedBy, parse::ParseResult, mid::Int, d)
     m = parse.matches[mid]
-    UserMatch(m.pos, m.len, map(tuple, m.submatches, getindex.(Ref(d), x.children)))
+    UserMatch(m.pos, m.len, [(m.submatches[1], d[x.follow])])
 end
 
 function user_view(x::OneOrMore, parse::ParseResult, mid::Int, d)

@@ -151,7 +151,7 @@ function flatten(
     rules::Dict{G},
     childname::Function = (rid, idx) -> Symbol(rid, :-, idx),
 )::Dict{G,Clause{G}} where {G}
-    todo = collect(rules)
+    todo = Pair{G,Clause}[r for r in rules]
     res = Dict{G,Clause{G}}()
 
     while !isempty(todo)
