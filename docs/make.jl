@@ -11,7 +11,7 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/exaexa/PikaParser.jl.git",
+    repo = "github.com/LCSB-BioCore/PikaParser.jl.git",
     target = "build",
     branch = "gh-pages",
     push_preview = false,
