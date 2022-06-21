@@ -1,0 +1,25 @@
+
+# ref: https://juliadocs.github.io/Documenter.jl/stable/man/hosting/#GitHub-Actions-1
+name: Documentation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+    tags: '*'
+  release:
+    types: [published, created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: julia-actions/setup-julia@latest
+      - name: Install dependencies
+        run: julia --color=yes --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+      - name: Build and deploy
+        env:
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # For authentication with SSH deploy key
+        run: julia --color=yes --project=docs/ docs/make.jl
