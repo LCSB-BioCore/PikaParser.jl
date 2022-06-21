@@ -25,37 +25,37 @@ labels for your grammar rules -- Julia symbols are a natural choice, but you
 are free to use integers, strings, or anything else.
 
 ```julia
-rules = Dict{Symbol,P.Clause{Symbol}}(
-    # Token matches a single item in the input
-    :plus => P.Token{Symbol}('+'),
-    :minus => P.Token{Symbol}('-'),
+rules = Dict(
+    # match a sequence of characters that satisfies `isdigit`
+    :digits => P.one_or_more(:digit => P.satisfy(isdigit)),
 
-    # Satisfy matches if the boolean function matches on input token.
-    :digit => P.Satisfy{Symbol}(isdigit),
-    :digits => P.OneOrMore(:digit), # greedy repetition
+    # expression in parentheses
+    :parens => P.seq(
+        P.token('('),
+        # you can name the rules in nested contexts
+        :expr => P.first(:plusexpr, :minusexpr, :digits, :parens),
+        P.token(')'),
+    ),
 
-    :plusexpr => P.Seq([:expr, :plus, :expr]), # sequence of matches
-    :minusexpr => P.Seq([:expr, :minus, :expr]),
-
-    :popen => P.Token{Symbol}('('),
-    :pclose => P.Token{Symbol}(')'),
-    :parens => P.Seq([:popen, :expr, :pclose]),
-
-    # the match is greedy -- take care about priority
-    :expr => P.First([:plusexpr, :minusexpr, :digits, :parens]),
+    # some random operators
+    :plusexpr => P.seq(:expr, P.token('+'), :expr),
+    :minusexpr => P.seq(:expr, P.token('-'), :expr),
 )
 
 g = P.make_grammar(
-    [:expr], # top-level rule
-    rules,
+    [:expr], # the top-level rule
+    P.flatten(rules),
 )
 ```
+
+The grammar is now prepared for parsing.
 
 ### Parsing text
 
 Pika parsers require frequent indexing of the input, Strings thus need to be
-converted to character vectors to be usable as parser input. For performance,
-it can be recommended to lex your input into a vector of more complex tokens.
+converted to character vectors to be usable as parser input. (To improve
+performance, it is adviseable to lex your input into a vector of more complex
+tokens.)
 
 ```julia
 input = collect("12-(34+567-8)")
@@ -96,31 +96,31 @@ By default, this runs through the whole match tree and transcodes the matches
 to Julia `Expr` AST. In this case, if you pipe the output through
 JuliaFormatter, you will get something like:
 ```julia
-:(expr(
+expr(
     minusexpr(
         expr(digits(digit(), digit())),
-        minus(),
+        var"minusexpr-2"(),
         expr(
             parens(
-                popen(),
+                var"parens-1"(),
                 expr(
                     plusexpr(
                         expr(digits(digit(), digit())),
-                        plus(),
+                        var"plusexpr-2"(),
                         expr(
                             minusexpr(
                                 expr(digits(digit(), digit(), digit())),
-                                minus(),
+                                var"minusexpr-2"(),
                                 expr(digits(digit())),
                             ),
                         ),
                     ),
                 ),
-                pclose(),
+                var"parens-3"(),
             ),
         ),
     ),
-))
+)
 ```
 
 It is straightforward to specify your own method of evaluating the parses by

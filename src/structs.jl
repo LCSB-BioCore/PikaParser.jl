@@ -13,11 +13,15 @@ Currently implemented clauses:
 - [`TakeN`](@ref)
 - [`Token`](@ref)
 - [`Tokens`](@ref)
+- [`Epsilon`](@ref)
 - [`Seq`](@ref)
 - [`First`](@ref)
 - [`NotFollowedBy`](@ref)
+- [`FollowedBy`](@ref)
 - [`OneOrMore`](@ref)
 - [`ZeroOrMore`](@ref)
+
+Often it is better to use convenience functions for rule construction, such as [`seq`](@ref) or [`token`](@ref); see [`flatten`](@ref) for details.
 """
 abstract type Clause{G} end
 

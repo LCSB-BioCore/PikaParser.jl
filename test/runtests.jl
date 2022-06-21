@@ -8,18 +8,34 @@ const P = PikaParser
 
 @testset "Run example from README" begin
 
-    rules = Dict{Symbol,P.Clause}(
-        :digits => P.OneOrMore(:digit => P.Satisfy{Symbol}(isdigit)),
-        :parens => P.Seq([
-            P.Token{Symbol}('('),
-            :expr => P.First([:plusexpr, :minusexpr, :digits, :parens]),
-            P.Token{Symbol}(')'),
-        ]),
-        :plusexpr => P.Seq([:expr, P.Token{Symbol}('+'), :expr]),
-        :minusexpr => P.Seq([:expr, P.Token{Symbol}('-'), :expr]),
+    rules = Dict(
+        :digits => P.one_or_more(:digit => P.satisfy(isdigit)),
+        :parens => P.seq(
+            P.token('('),
+            :expr => P.first(:plusexpr, :minusexpr, :digits, :parens),
+            P.token(')'),
+        ),
+        :plusexpr => P.seq(:expr, P.token('+'), :expr),
+        :minusexpr => P.seq(:expr, P.token('-'), :expr),
     )
 
     rules_flat = P.flatten(rules)
+
+    @test issetequal(
+        keys(rules_flat),
+        [
+            :digit,
+            :digits,
+            :parens,
+            :expr,
+            :minusexpr,
+            :plusexpr,
+            Symbol("parens-1"),
+            Symbol("parens-3"),
+            Symbol("plusexpr-2"),
+            Symbol("minusexpr-2"),
+        ],
+    )
 
     g = P.make_grammar(
         [:expr], # top-level rule

@@ -10,6 +10,15 @@ Pages = ["structs.jl"]
 
 ## Preparing the grammar
 
+### Specifying rules
+
+```@autodocs
+Modules = [PikaParser]
+Pages = ["frontend.jl"]
+```
+
+### Converting to a `Grammar`
+
 ```@autodocs
 Modules = [PikaParser]
 Pages = ["grammar.jl"]

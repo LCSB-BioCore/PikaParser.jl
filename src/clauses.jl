@@ -44,10 +44,10 @@ rechildren(x::Tokens, v::Vector) = Tokens{valtype(v)}(x.tokens)
 rechildren(x::Epsilon, v::Vector) = Epsilon{valtype(v)}()
 rechildren(x::Seq, v::Vector) = Seq{valtype(v)}(v)
 rechildren(x::First, v::Vector) = First{valtype(v)}(v)
-rechildren(x::NotFollowedBy, v::Vector) = NotFollowedBy{valtype(v)}(first(v))
-rechildren(x::FollowedBy, v::Vector) = FollowedBy{valtype(v)}(first(v))
-rechildren(x::OneOrMore, v::Vector) = OneOrMore{valtype(v)}(first(v))
-rechildren(x::ZeroOrMore, v::Vector) = ZeroOrMore{valtype(v)}(first(v))
+rechildren(x::NotFollowedBy, v::Vector) = NotFollowedBy{valtype(v)}(Base.first(v))
+rechildren(x::FollowedBy, v::Vector) = FollowedBy{valtype(v)}(Base.first(v))
+rechildren(x::OneOrMore, v::Vector) = OneOrMore{valtype(v)}(Base.first(v))
+rechildren(x::ZeroOrMore, v::Vector) = ZeroOrMore{valtype(v)}(Base.first(v))
 
 
 function seeded_by(x::Clause{G}, ::Vector{Bool})::Vector{G} where {G}
