@@ -22,7 +22,7 @@ function make_grammar(
     queued = fill(false, n_rules)
     opened = fill(false, n_rules)
     closed = fill(false, n_rules)
-    stk = getindex.(Ref(rule_idx), starts)
+    stk = [rule_idx[s] for s in starts]
     queued[stk[1]] = true
     topo_order_idx = fill(0, n_rules)
     last_order = 0
@@ -47,8 +47,7 @@ function make_grammar(
 
     all(closed) || error("some grammar rules not reachable from starts")
 
-    name_idx =
-        Dict{G,Int}(r .=> topo_order_idx[rule_idx[r]] for r in map(Base.first, rules))
+    name_idx = Dict{G,Int}(rid => topo_order_idx[rule_idx[rid]] for (rid, _) in rules)
     topo_order = invperm(topo_order_idx)
 
     # Possible problem: tail clause of a cycle that matches epsilon is quite
@@ -81,10 +80,10 @@ function make_grammar(
     reordered = rules[topo_order]
     Grammar{G}(
         Base.first.(reordered),
-        Dict{G,Int}(Base.first.(reordered) .=> eachindex(reordered)),
+        Dict{G,Int}(rid => i for (i, (rid, _)) in enumerate(reordered)),
         Clause{Int}[
-            rechildren(cl, getindex.(Ref(name_idx), child_clauses(cl))) for
-            cl in last.(reordered)
+            rechildren(cl, [name_idx[chcl] for chcl in child_clauses(cl)]) for
+            (_, cl) in reordered
         ],
         emptiable,
         collect.(seed),
