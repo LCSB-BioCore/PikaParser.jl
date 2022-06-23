@@ -162,7 +162,6 @@ ruleset.
 """
 function precedence_cascade(label::Function, levels...)
     n = length(levels)
-    n > 0 || return first() # always fail if there are no rules
     precs = label.(1:n)
 
     return [
