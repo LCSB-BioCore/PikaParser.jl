@@ -62,13 +62,11 @@ end
 
 @testset "Precedence macro" begin
     rules = Dict(
+        :parens => P.seq(P.token('('), :expr, P.token(')')),
         P.@precedences (n -> Symbol(:rule, n)) same next begin
             :expr => P.seq(same, P.token('+'), next)
             P.seq(same, P.token('*'), next)
-            P.first(
-                :eeks => P.token('x'),
-                :parens => P.seq(P.token('('), next, P.token(')')),
-            )
+            P.first(:eeks => P.token('x'), :parens)
         end
     )
 
