@@ -8,11 +8,11 @@ Produce a [`Grammar`](@ref) with rules of type `G` that can be used to
 `starts` should collect top-level rules (these will be put at the top of the
 topological order of the parsing).
 
-`rules_dict` is a dictionary of grammar clauses.
+`rules_dict` is a dictionary of grammar [`Clause`](@ref)s.
 """
 function make_grammar(
     starts::AbstractVector{G},
-    rules_dict::Dict{G,Clause{G}},
+    rules_dict::Dict{G,Clause{G}};
 )::Grammar{G} where {G}
     rules = collect(rules_dict)
     n_rules = length(rules)
