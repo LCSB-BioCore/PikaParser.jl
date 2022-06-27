@@ -67,7 +67,7 @@ function traverse_match(
         0,
         0,
         rule,
-        user_view(grammar.clauses[grammar.idx[rule]], parse, mid, grammar.names),
+        user_view(grammar.clauses[grammar.idx[rule]], parse, mid),
         false,
         Any[],
     )]
@@ -84,19 +84,15 @@ function traverse_match(
             # push in reverse order so that it is still evaluated "forward"
             for i in reverse(eachindex(cur.subvals))
                 if mask[i]
-                    submid, subrule = cur.match.submatches[i]
+                    submid = cur.match.submatches[i]
+                    clause = parse.matches[submid].clause
                     push!(
                         stk,
                         TraverseNode(
                             parent_idx,
                             i,
-                            subrule,
-                            user_view(
-                                grammar.clauses[grammar.idx[subrule]],
-                                parse,
-                                submid,
-                                grammar.names,
-                            ),
+                            grammar.names[clause],
+                            user_view(grammar.clauses[clause], parse, submid),
                             false,
                             Any[],
                         ),

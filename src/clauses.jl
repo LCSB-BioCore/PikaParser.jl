@@ -107,29 +107,29 @@ can_match_epsilon(x::ZeroOrMore, ch::Vector{Bool}) = true
 # Clause matching
 #
 
-function match_clause!(x::Satisfy, ::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::Satisfy, id::Int, pos::Int, st::ParserState)::MatchResult
     if x.match(st.input[pos])
-        new_match!(Match(pos, 1, 0, []), st)
+        new_match!(Match(id, pos, 1, 0, []), st)
     end
 end
 
-function match_clause!(x::TakeN, ::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::TakeN, id::Int, pos::Int, st::ParserState)::MatchResult
     match_len = x.match(view(st.input, pos:length(st.input)))
     if !isnothing(match_len)
-        new_match!(Match(pos, match_len, 0, []), st)
+        new_match!(Match(id, pos, match_len, 0, []), st)
     end
 end
 
-function match_clause!(x::Token, ::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::Token, id::Int, pos::Int, st::ParserState)::MatchResult
     if st.input[pos] == x.token
-        new_match!(Match(pos, 1, 0, []), st)
+        new_match!(Match(id, pos, 1, 0, []), st)
     end
 end
 
-function match_clause!(x::Tokens, ::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::Tokens, id::Int, pos::Int, st::ParserState)::MatchResult
     len = length(x.tokens)
     if pos - 1 + len <= length(st.input) && st.input[pos:pos-1+len] == x.tokens
-        new_match!(Match(pos, len, 0, []), st)
+        new_match!(Match(id, pos, len, 0, []), st)
     end
 end
 
@@ -137,7 +137,7 @@ function match_clause!(x::Fail, ::Int, ::Int, ::ParserState)::MatchResult
     nothing
 end
 
-function match_clause!(x::Seq, ::Int, orig_pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::Seq, id::Int, orig_pos::Int, st::ParserState)::MatchResult
     pos = orig_pos
     seq = Vector{Int}(undef, length(x.children))
     for (i, c) in enumerate(x.children)
@@ -149,34 +149,34 @@ function match_clause!(x::Seq, ::Int, orig_pos::Int, st::ParserState)::MatchResu
         seq[i] = mid
         pos += st.matches[mid].len
     end
-    new_match!(Match(orig_pos, pos - orig_pos, 0, seq), st)
+    new_match!(Match(id, orig_pos, pos - orig_pos, 0, seq), st)
 end
 
-function match_clause!(x::First, ::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::First, id::Int, pos::Int, st::ParserState)::MatchResult
     for (i, c) in enumerate(x.children)
         mid = lookup_best_match_id!(MemoKey(c, pos), st)
         if !isnothing(mid)
-            return new_match!(Match(pos, st.matches[mid].len, i, [mid]), st)
+            return new_match!(Match(id, pos, st.matches[mid].len, i, [mid]), st)
         end
     end
     nothing
 end
 
-function match_clause!(x::NotFollowedBy, ::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
     mid = lookup_best_match_id!(MemoKey(x.reserved, pos), st)
     if isnothing(mid)
-        new_match!(Match(pos, 0, 0, []), st)
+        new_match!(Match(id, pos, 0, 0, []), st)
     else
         nothing
     end
 end
 
-function match_clause!(x::FollowedBy, ::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
     mid = lookup_best_match_id!(MemoKey(x.follow, pos), st)
     if isnothing(mid)
         nothing
     else
-        new_match!(Match(pos, 0, 1, [mid]), st)
+        new_match!(Match(id, pos, 0, 1, [mid]), st)
     end
 end
 
@@ -185,10 +185,10 @@ function match_clause!(x::OneOrMore, id::Int, pos::Int, st::ParserState)::MatchR
     isnothing(mid1) && return nothing
     mid2 = lookup_best_match_id!(MemoKey(id, pos + st.matches[mid1].len), st)
     if isnothing(mid2)
-        new_match!(Match(pos, st.matches[mid1].len, 0, [mid1]), st)
+        new_match!(Match(id, pos, st.matches[mid1].len, 0, [mid1]), st)
     else
         new_match!(
-            Match(pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
+            Match(id, pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
             st,
         )
     end
@@ -204,76 +204,67 @@ function match_clause!(x::ZeroOrMore, id::Int, pos::Int, st::ParserState)::Match
         error(AssertionError("ZeroOrMore did not match, but it should have had!"))
     else
         new_match!(
-            Match(pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
+            Match(id, pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
             st,
         )
     end
 end
 
 
-match_epsilon!(x::Clause, ::Int, pos::Int, st::ParserState) =
-    new_match!(Match(pos, 0, 0, []), st)
+match_epsilon!(x::Clause, id::Int, pos::Int, st::ParserState) =
+    new_match!(Match(id, pos, 0, 0, []), st)
 #TODO this needs a recursion guard!
 match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState) =
     match_clause!(x, id, pos, st)
+
 
 #
 # "User" view of the clauses, for parsetree traversing
 #
 
-function user_view(::Clause, parse::ParseResult, mid::Int, d)
+function user_view(::Clause, parse::ParseResult, mid::Int)
     # generic case
     m = parse.matches[mid]
-    UserMatch(m.pos, m.len, Tuple{Int,valtype(d)}[])
+    UserMatch(m.pos, m.len, Int[])
 end
 
-function user_view(x::Seq, parse::ParseResult, mid::Int, d)
+function user_view(x::Union{Seq,First,FollowedBy}, parse::ParseResult, mid::Int)
     m = parse.matches[mid]
-    UserMatch(m.pos, m.len, map(tuple, m.submatches, getindex.(Ref(d), x.children)))
+    UserMatch(m.pos, m.len, m.submatches)
 end
 
-function user_view(x::First, parse::ParseResult, mid::Int, d)
-    m = parse.matches[mid]
-    UserMatch(m.pos, m.len, [(m.submatches[1], d[x.children[m.option_idx]])])
-end
-
-function user_view(x::FollowedBy, parse::ParseResult, mid::Int, d)
-    m = parse.matches[mid]
-    UserMatch(m.pos, m.len, [(m.submatches[1], d[x.follow])])
-end
-
-function user_view(x::OneOrMore, parse::ParseResult, mid::Int, d)
+function user_view(x::OneOrMore, parse::ParseResult, mid::Int)
     len = 1
     m = mid
     while parse.matches[m].option_idx == 1
         len += 1
         m = parse.matches[m].submatches[2]
     end
-    res = Vector{Tuple{Int,valtype(d)}}(undef, len)
+    res = Vector{Int}(undef, len)
     m = mid
     idx = 1
     while parse.matches[m].option_idx == 1
-        res[idx] = (parse.matches[m].submatches[1], d[x.item])
+        res[idx] = parse.matches[m].submatches[1]
         idx += 1
         m = parse.matches[m].submatches[2]
     end
-    res[idx] = (parse.matches[m].submatches[1], d[x.item])
+    res[idx] = parse.matches[m].submatches[1]
     m = parse.matches[mid]
     UserMatch(m.pos, m.len, res)
 end
 
-function user_view(x::ZeroOrMore, parse::ParseResult, mid::Int, d)
+function user_view(x::ZeroOrMore, parse::ParseResult, mid::Int)
     len = 0
     m = mid
     while parse.matches[m].option_idx == 1
         len += 1
         m = parse.matches[m].submatches[2]
     end
-    res = Vector{Tuple{Int,valtype(d)}}(undef, len)
+    res = Vector{Int}(undef, len)
     m = mid
     idx = 1
     while parse.matches[m].option_idx == 1
-        res[idx] = (parse.matches[m].submatches[1], d[x.item])
+        res[idx] = parse.matches[m].submatches[1]
         idx += 1
         m = parse.matches[m].submatches[2]
     end

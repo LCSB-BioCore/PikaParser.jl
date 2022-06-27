@@ -209,8 +209,7 @@ struct MemoKey
     pos::Int
 end
 
-@inline Base.isless(a::MemoKey, b::MemoKey) =
-    isless((a.pos, -a.clause), (b.pos, -b.clause))
+@inline Base.isless(a::MemoKey, b::MemoKey) = isless((a.pos, -a.clause), (b.pos, -b.clause))
 
 """
 $(TYPEDEF)
@@ -228,13 +227,16 @@ Internal match representation.
 $(TYPEDFIELDS)
 """
 struct Match
+    "Which clause has matched here?"
+    clause::Int
+
     "Where the match started?"
     pos::Int
 
     "How long is the match?"
     len::Int
 
-    "Which possibility did we match?"
+    "Which possibility (given by the clause) did we match?"
     option_idx::Int
 
     "Indexes to the vector of matches. This forms the edges in the match tree."
@@ -265,7 +267,7 @@ User-facing representation of a [`Match`](@ref).
 # Fields
 $(TYPEDFIELDS)
 """
-struct UserMatch{G}
+struct UserMatch
     "Where the match started?"
     pos::Int
 
@@ -273,7 +275,7 @@ struct UserMatch{G}
     len::Int
 
     "Indexes and rule labels of the matched submatches. This forms the edges in the match tree."
-    submatches::Vector{Tuple{Int,G}}
+    submatches::Vector{Int}
 end
 
 #
