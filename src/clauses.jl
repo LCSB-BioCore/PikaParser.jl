@@ -42,6 +42,7 @@ rechildren(x::TakeN, v::Vector) = TakeN{valtype(v)}(x.match)
 rechildren(x::Token, v::Vector) = Token{valtype(v)}(x.token)
 rechildren(x::Tokens, v::Vector) = Tokens{valtype(v)}(x.tokens)
 rechildren(x::Epsilon, v::Vector) = Epsilon{valtype(v)}()
+rechildren(x::Fail, v::Vector) = Fail{valtype(v)}()
 rechildren(x::Seq, v::Vector) = Seq{valtype(v)}(v)
 rechildren(x::First, v::Vector) = First{valtype(v)}(v)
 rechildren(x::NotFollowedBy, v::Vector) = NotFollowedBy{valtype(v)}(Base.first(v))
@@ -89,8 +90,8 @@ better_match_than(::Clause, new::Match, old::Match) = new.len > old.len
 
 
 can_match_epsilon(x::Union{Satisfy,TakeN,Token,Tokens}, ::Vector{Bool}) = false
-can_match_epsilon(x::Nothing, ::Vector{Bool}) = true
-can_match_epsilon(x::Satisfy, ::Vector{Bool}) = false
+can_match_epsilon(x::Epsilon, ::Vector{Bool}) = true
+can_match_epsilon(x::Fail, ::Vector{Bool}) = false
 can_match_epsilon(x::Seq, ch::Vector{Bool}) = all(ch)
 can_match_epsilon(x::First, ch::Vector{Bool}) =
     isempty(ch) ? false :
@@ -130,6 +131,10 @@ function match_clause!(x::Tokens, ::Int, pos::Int, st::ParserState)::MatchResult
     if pos - 1 + len <= length(st.input) && st.input[pos:pos-1+len] == x.tokens
         new_match!(Match(pos, len, 0, []), st)
     end
+end
+
+function match_clause!(x::Fail, ::Int, ::Int, ::ParserState)::MatchResult
+    nothing
 end
 
 function match_clause!(x::Seq, ::Int, orig_pos::Int, st::ParserState)::MatchResult

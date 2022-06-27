@@ -56,6 +56,21 @@ An [`Epsilon`](@ref) clause. Translate to strongly typed grammar with [`flatten`
 const epsilon = Epsilon{Any}()
 
 """
+    fail :: Clause
+
+A [`Fail`](@ref) clause. Translate to strongly typed grammar with [`flatten`](@ref).
+
+Useful for avoiding rule specification when matching terminals using the
+`fast_match` parameter of [`parse`](@ref).
+
+
+# Example
+
+    seq(:this, :that, fail)  # this rule is effectively disabled
+"""
+const fail = Fail{Any}()
+
+"""
 $(TYPEDSIGNATURES)
 
 Build a [`Seq`](@ref) clause. Translate to strongly typed grammar with [`flatten`](@ref).
@@ -222,6 +237,7 @@ convenience rule building functions:
 - [`token`](@ref)
 - [`tokens`](@ref)
 - [`epsilon`](@ref) (not a function!)
+- [`fail`](@ref) (not a function!)
 - [`seq`](@ref)
 - [`first`](@ref)
 - [`not_followed_by`](@ref)
