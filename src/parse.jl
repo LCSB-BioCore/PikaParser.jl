@@ -4,7 +4,7 @@ function lookup_best_match_id!(k::MemoKey, st::ParserState)::MatchResult
     isnothing(mid) || return mid
 
     if st.grammar.can_match_epsilon[k.clause]
-        return match_epsilon!(st.grammar.clauses[k.clause], k.clause, k.start_pos, st)
+        return match_epsilon!(st.grammar.clauses[k.clause], k.clause, k.pos, st)
     end
 
     return nothing

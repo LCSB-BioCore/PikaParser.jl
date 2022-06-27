@@ -206,11 +206,11 @@ $(TYPEDFIELDS)
 """
 struct MemoKey
     clause::Int
-    start_pos::Int
+    pos::Int
 end
 
 @inline Base.isless(a::MemoKey, b::MemoKey) =
-    isless((a.start_pos, -a.clause), (b.start_pos, -b.clause))
+    isless((a.pos, -a.clause), (b.pos, -b.clause))
 
 """
 $(TYPEDEF)

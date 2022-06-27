@@ -16,7 +16,7 @@ function find_first_parse_at(
     tk = searchsortedfirst(parse.memo, MemoKey(0, pos - 1))
     tk == pastendsemitoken(parse.memo) && return nothing
     k = deref_key((parse.memo, tk))
-    return (k.start_pos, grammar.names[k.clause])
+    return (k.pos, grammar.names[k.clause])
 end
 
 """
