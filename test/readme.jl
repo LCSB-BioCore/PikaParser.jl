@@ -41,19 +41,19 @@
     input = collect(input_str)
     p = P.parse(g, input)
 
-    pos, rule = P.find_first_parse_at(g, p, 1)
+    pos, rule = P.find_first_parse_at(p, 1)
     @test pos == 1
     @test rule == :expr
 
-    mid = P.find_match_at(g, p, :expr, 1)
+    mid = P.find_match_at!(p, :expr, 1)
 
     @test !isnothing(mid)
 
-    m = p.matches[P.find_match_at(g, p, :expr, 1)]
+    m = p.matches[P.find_match_at!(p, :expr, 1)]
     @test m.pos == 1
     @test m.len == length(input)
 
-    x = P.traverse_match(g, p, P.find_match_at(g, p, :expr, 1), :expr)
+    x = P.traverse_match(p, P.find_match_at!(p, :expr, 1))
     @test x == :(expr(
         minusexpr(
             expr(digits(digit(), digit())),
@@ -81,10 +81,8 @@
     ))
 
     res = P.traverse_match(
-        g,
         p,
-        P.find_match_at(g, p, :expr, 1),
-        :expr,
+        P.find_match_at!(p, :expr, 1),
         fold = (rule, umatch, subvals) ->
             rule == :digits ?
             parse(Int, String(input[umatch.pos:umatch.pos+umatch.len-1])) :

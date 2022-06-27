@@ -4,7 +4,7 @@ function lookup_best_match_id!(k::MemoKey, st::ParserState)::MatchResult
     isnothing(mid) || return mid
 
     if st.grammar.can_match_epsilon[k.clause]
-        return match_epsilon!(st.grammar.clauses[k.clause], k.clause, k.start_pos, st)
+        return match_epsilon!(st.grammar.clauses[k.clause], k.clause, k.pos, st)
     end
 
     return nothing
@@ -38,8 +38,8 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Take a [`Grammar`](@ref) and an indexable input sequence, and produce a
-[`ParseResult`](@ref) that describes all matched grammar productions.
+Take a [`Grammar`](@ref) and an indexable input sequence, and return a final
+[`ParserState`](@ref) that contains all matched grammar productions.
 
 # Fast terminal matching
 
@@ -60,12 +60,12 @@ matching all terminal types at each position.
 
 # Results
 
-Use [`find_first_parse_at`](@ref) or [`find_match_at`](@ref) to extract matches
-from [`ParseResult`](@ref).
+Use [`find_first_parse_at`](@ref) or [`find_match_at!`](@ref) to extract matches
+from [`ParserState`](@ref).
 
 Pika parsing never really fails. Instead, in case when the grammar rule is not
 matched in the input, the expected rule match match is either not going to be
-found at the starting position with [`find_match_at`](@ref), or it will not
+found at the starting position with [`find_match_at!`](@ref), or it will not
 span the whole input.
 
 # Example
@@ -76,7 +76,11 @@ span the whole input.
         (input, i, match) -> isdigit(input[i]) ? match(:digit, 1) : match(:letter, 1),
     )
 """
-function parse(grammar::Grammar, input::AbstractVector, fast_match = nothing)::ParseResult
+function parse(
+    grammar::Grammar{G},
+    input::I,
+    fast_match = nothing,
+)::ParserState{G,I} where {G,I<:AbstractVector}
     st = ParserState(grammar, MemoTable(), PikaQueue(), Match[], input)
     sizehint!(st.matches, length(input)) # hopefully avoids a painful part of the overhead
 
@@ -88,7 +92,7 @@ function parse(grammar::Grammar, input::AbstractVector, fast_match = nothing)::P
                 input,
                 i,
                 (rid, len) -> let cl = grammar.idx[rid]
-                    add_match!(MemoKey(cl, i), new_match!(Match(i, len, 0, []), st), st)
+                    add_match!(MemoKey(cl, i), new_match!(Match(cl, i, len, 0, []), st), st)
                 end,
             )
         end
@@ -99,5 +103,5 @@ function parse(grammar::Grammar, input::AbstractVector, fast_match = nothing)::P
         end
     end
 
-    return ParseResult(st.memo, st.matches)
+    st
 end

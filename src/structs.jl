@@ -206,11 +206,10 @@ $(TYPEDFIELDS)
 """
 struct MemoKey
     clause::Int
-    start_pos::Int
+    pos::Int
 end
 
-@inline Base.isless(a::MemoKey, b::MemoKey) =
-    isless((a.start_pos, -a.clause), (b.start_pos, -b.clause))
+@inline Base.isless(a::MemoKey, b::MemoKey) = isless((a.pos, -a.clause), (b.pos, -b.clause))
 
 """
 $(TYPEDEF)
@@ -228,33 +227,20 @@ Internal match representation.
 $(TYPEDFIELDS)
 """
 struct Match
+    "Which clause has matched here?"
+    clause::Int
+
     "Where the match started?"
     pos::Int
 
     "How long is the match?"
     len::Int
 
-    "Which possibility did we match?"
+    "Which possibility (given by the clause) did we match?"
     option_idx::Int
 
     "Indexes to the vector of matches. This forms the edges in the match tree."
     submatches::Vector{Int}
-end
-
-"""
-$(TYPEDEF)
-
-Representation of the parser output.
-
-# Fields
-$(TYPEDFIELDS)
-"""
-struct ParseResult
-    "Best matches of grammar rules for each position of the input"
-    memo::MemoTable
-
-    "Match tree (folded into a vector)"
-    matches::Vector{Match}
 end
 
 """
@@ -265,7 +251,7 @@ User-facing representation of a [`Match`](@ref).
 # Fields
 $(TYPEDFIELDS)
 """
-struct UserMatch{G}
+struct UserMatch
     "Where the match started?"
     pos::Int
 
@@ -273,7 +259,7 @@ struct UserMatch{G}
     len::Int
 
     "Indexes and rule labels of the matched submatches. This forms the edges in the match tree."
-    submatches::Vector{Tuple{Int,G}}
+    submatches::Vector{Int}
 end
 
 #
@@ -290,14 +276,26 @@ $(TYPEDEF)
 Intermediate parsing state. The match tree is built in a vector of matches that
 grows during the matching, all match indexes point into this vector.
 
+This structure is also a "result" of the parsing, used to reconstruct the match
+tree.
+
 # Fields
 $(TYPEDFIELDS)
 """
 mutable struct ParserState{G,I}
+    "Copy of the grammar used to parse the input."
     grammar::Grammar{G}
+
+    "Best matches of grammar rules for each position of the input"
     memo::MemoTable
+
+    "Queue for rules that should match, used only internally."
     q::PikaQueue
+
+    "Match tree (folded into a vector)"
     matches::Vector{Match}
+
+    "Parser input, can be used to reconstruct match data."
     input::I
 end
 

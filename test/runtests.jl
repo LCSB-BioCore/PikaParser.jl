@@ -1,8 +1,6 @@
 
-using PikaParser
+import PikaParser as P
 using Test
-
-const P = PikaParser
 
 @testset "PikaParser tests" begin
     include("readme.jl")
