@@ -14,6 +14,7 @@ Currently implemented clauses:
 - [`Token`](@ref)
 - [`Tokens`](@ref)
 - [`Epsilon`](@ref)
+- [`Fail`](@ref)
 - [`Seq`](@ref)
 - [`First`](@ref)
 - [`NotFollowedBy`](@ref)
@@ -81,6 +82,13 @@ $(TYPEDEF)
 An always-succeeding epsilon match.
 """
 struct Epsilon{G} <: Clause{G} end
+
+"""
+$(TYPEDEF)
+
+An always-failing match.
+"""
+struct Fail{G} <: Clause{G} end
 
 """
 $(TYPEDEF)

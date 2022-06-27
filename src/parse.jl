@@ -88,7 +88,7 @@ function parse(grammar::Grammar, input::AbstractVector, fast_match = nothing)::P
                 input,
                 i,
                 (rid, len) -> let cl = grammar.idx[rid]
-                    add_match!(MemoKey(cl, i), Match(i, len, 0, []), st)
+                    add_match!(MemoKey(cl, i), new_match!(Match(i, len, 0, []), st), st)
                 end,
             )
         end

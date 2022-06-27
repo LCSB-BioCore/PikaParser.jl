@@ -8,4 +8,5 @@ const P = PikaParser
     include("readme.jl")
     include("clauses.jl")
     include("precedence.jl")
+    include("fastmatch.jl")
 end
