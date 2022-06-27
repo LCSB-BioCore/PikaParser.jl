@@ -14,8 +14,7 @@ The code is new, **feedback is welcome**.
 ## Example
 
 ```julia
-using PikaParser
-const P = PikaParser
+import PikaParser as P
 ```
 
 ### Building a grammar
@@ -64,7 +63,7 @@ p = P.parse(g, input)
 
 You can find if something matched:
 ```julia
-P.find_first_parse_at(g, p, 1)
+P.find_first_parse_at(p, 1)
 ```
 ...which should return `(1, :expr)`, telling that there's a match of `:expr` at
 the first position.
@@ -72,25 +71,25 @@ the first position.
 You can also get the match index of the match, to find more about what was
 matched:
 ```julia
-P.find_match_at(g, p, :expr, 1)
+P.find_match_at!(p, :expr, 1)
 ```
 ...which returns an index in the match table (if found), such as `45`.
 
 You can have a look at the match. `p.matches[45]` should return
 ```julia
-PikaParser.Match(1, 13, 2, [44])
+PikaParser.Match(10, 1, 13, 2, [44])
 ```
-where `1` is the starting position in the input, `13` is the length of the
-match (here, that is the whole input); `2` is the option index (in this case,
-it points to `:expr` option 2, which is `:minusexpr`), and 44 is the submatch
-of `:minusexpr`.
+where `10` is the renumbered rule ID for `:expr`, `1` is the starting position
+in the input, `13` is the length of the match (here, that is the whole input);
+`2` is the option index (in this case, it points to `:expr` option 2, which is
+`:minusexpr`), and 44 is the submatch of `:minusexpr`.
 
 ### Recovering parsed ASTs
 
 You can use `traverse_match` to recursively walk the parse trees, to produce
 ASTs, and translate, interpret or evaluate the expressions:
 ```julia
-P.traverse_match(g, p, P.find_match_at(g, p, :expr, 1), :expr)
+P.traverse_match(p, P.find_match_at!(p, :expr, 1))
 ```
 By default, this runs through the whole match tree and transcodes the matches
 to Julia `Expr` AST. In this case, if you pipe the output through
@@ -127,7 +126,7 @@ It is straightforward to specify your own method of evaluating the parses by
 supplying the matchtree opening and folding functions. For example, you can
 evaluate the expression as follows:
 ```julia
-P.traverse_match(g, p, P.find_match_at(g, p, :expr, 1), :expr,
+P.traverse_match(p, P.find_match_at!(p, :expr, 1),
     fold = (rule, match, subvals) ->
         rule == :digits ?
         parse(Int, String(input[match.pos:match.pos+match.len-1])) :

@@ -5,41 +5,36 @@ $(TYPEDSIGNATURES)
 Find any possible match of anything starting at input position `pos`.
 Preferentially returns the parses that are topologically higher.
 
-If found, returns the [`Match`](@ref) index in [`ParseResult`](@ref), and the
-corresponding grammar production rule.
+If found, returns the [`Match`](@ref) index in [`ParserState`](@ref), and the
+name of the corresponding grammar production rule.
 """
-function find_first_parse_at(
-    grammar::Grammar{G},
-    parse::ParseResult,
-    pos::Int,
-)::Maybe{Tuple{Int,G}} where {G}
-    tk = searchsortedfirst(parse.memo, MemoKey(0, pos - 1))
-    tk == pastendsemitoken(parse.memo) && return nothing
-    k = deref_key((parse.memo, tk))
-    return (k.pos, grammar.names[k.clause])
+function find_first_parse_at(st::ParserState{G}, pos::Int)::Maybe{Tuple{Int,G}} where {G}
+    tk = searchsortedfirst(st.memo, MemoKey(0, pos - 1))
+    tk == pastendsemitoken(st.memo) && return nothing
+    k = deref_key((st.memo, tk))
+    return (k.pos, st.grammar.names[k.clause])
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Find the [`Match`](@ref) index in [`ParseResult`](@ref) that matched `rule` at
+Find the [`Match`](@ref) index in [`ParserState`](@ref) that matched `rule` at
 position `pos`, or `nothing` if there is no such match.
+
+Zero-length matches may not be matched at all positions by default; this
+function creates the necessary matches in the tables in `st` in case they are
+missing. (That is the reason for the `!` label.)
 """
-function find_match_at(
-    grammar::Grammar{G},
-    parse::ParseResult,
-    rule::G,
-    pos::Int,
-)::Maybe{Int} where {G}
-    get(parse.memo, MemoKey(grammar.idx[rule], pos), nothing)
+function find_match_at!(st::ParserState{G}, rule::G, pos::Int)::Maybe{Int} where {G}
+    lookup_best_match_id!(MemoKey(st.grammar.idx[rule], pos), st)
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Given a [`Match`](@ref) index and the grammar `rule` matched at that index,
-recusively depth-first traverse the match tree using functions `open` (called
-upon entering a submatch) and `fold` (called upon leaving the submatch).
+Given a [`Match`](@ref) index in [`ParserState`](@ref) `st`, recusively
+depth-first traverse the match tree using functions `open` (called upon
+entering a submatch) and `fold` (called upon leaving the submatch).
 
 `open` is given the current grammar rule and the [`UserMatch`](@ref). It should
 return a vector of boolean values that tell the traversal which submatches from
@@ -56,18 +51,16 @@ collects all submatch values and produces a Julia `Expr` AST structure where
 rule expansions are represented as function calls.
 """
 function traverse_match(
-    grammar::Grammar{G},
-    parse::ParseResult,
-    mid::Int,
-    rule::G;
+    st::ParserState{G},
+    mid::Int;
     open::Function = (_, umatch) -> (true for _ in umatch.submatches),
     fold::Function = (rule, umatch, subvals) -> Expr(:call, rule, subvals...),
 ) where {G}
     stk = TraverseNode{G}[TraverseNode(
         0,
         0,
-        rule,
-        user_view(grammar.clauses[grammar.idx[rule]], parse, mid),
+        st.grammar.names[st.matches[mid].clause],
+        user_view(st.grammar.clauses[st.matches[mid].clause], st, mid),
         false,
         Any[],
     )]
@@ -85,14 +78,14 @@ function traverse_match(
             for i in reverse(eachindex(cur.subvals))
                 if mask[i]
                     submid = cur.match.submatches[i]
-                    clause = parse.matches[submid].clause
+                    clause = st.matches[submid].clause
                     push!(
                         stk,
                         TraverseNode(
                             parent_idx,
                             i,
-                            grammar.names[clause],
-                            user_view(grammar.clauses[clause], parse, submid),
+                            st.grammar.names[clause],
+                            user_view(st.grammar.clauses[clause], st, submid),
                             false,
                             Any[],
                         ),

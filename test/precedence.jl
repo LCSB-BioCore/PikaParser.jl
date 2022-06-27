@@ -46,15 +46,13 @@
 
     input = collect("1*1-1+1^(1+1)^1")
     p = P.parse(g, input)
-    m = P.find_match_at(g, p, :expr, 1)
+    m = P.find_match_at!(p, :expr, 1)
     @test p.matches[m].len == length(input)
 
     fmt(x) = isnothing(x) ? () : x
     @test P.traverse_match(
-        g,
         p,
         m,
-        :expr,
         fold = (rule, match, vals) ->
             length(vals) == 1 ? fmt(vals[1]) : tuple(fmt.(vals)...),
     ) == ((((), (), ()), (), ()), (), ((), (), (((), ((), (), ()), ()), (), ())))
@@ -92,15 +90,13 @@ end
 
     input = collect("x+x*(x+x)*x")
     p = P.parse(g, input)
-    m = P.find_match_at(g, p, :expr, 1)
+    m = P.find_match_at!(p, :expr, 1)
     @test p.matches[m].len == length(input)
     fmt(x) = isnothing(x) ? () : x
 
     @test P.traverse_match(
-        g,
         p,
         m,
-        :expr,
         fold = (rule, match, vals) ->
             length(vals) == 1 ? fmt(vals[1]) : tuple(fmt.(vals)...),
     ) == ((), (), (((), (), ((), ((), (), ()), ())), (), ()))

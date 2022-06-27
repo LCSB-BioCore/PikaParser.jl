@@ -9,14 +9,12 @@
     input = collect("123,234,345")
     p = P.parse(g, input, (input, i, r) -> input[i] == ',' ? r(:sep, 1) : r(:digit, 1))
 
-    mid = P.find_match_at(g, p, :seq, 1)
+    mid = P.find_match_at!(p, :seq, 1)
     @test p.matches[mid].len == length(input)
 
     x = P.traverse_match(
-        g,
         p,
         mid,
-        :seq,
         fold = (rule, match, subvals) ->
             rule == :digits ?
             parse(Int, String(input[match.pos:match.pos+match.len-1])) :

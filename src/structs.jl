@@ -246,22 +246,6 @@ end
 """
 $(TYPEDEF)
 
-Representation of the parser output.
-
-# Fields
-$(TYPEDFIELDS)
-"""
-struct ParseResult
-    "Best matches of grammar rules for each position of the input"
-    memo::MemoTable
-
-    "Match tree (folded into a vector)"
-    matches::Vector{Match}
-end
-
-"""
-$(TYPEDEF)
-
 User-facing representation of a [`Match`](@ref).
 
 # Fields
@@ -292,14 +276,26 @@ $(TYPEDEF)
 Intermediate parsing state. The match tree is built in a vector of matches that
 grows during the matching, all match indexes point into this vector.
 
+This structure is also a "result" of the parsing, used to reconstruct the match
+tree.
+
 # Fields
 $(TYPEDFIELDS)
 """
 mutable struct ParserState{G,I}
+    "Copy of the grammar used to parse the input."
     grammar::Grammar{G}
+
+    "Best matches of grammar rules for each position of the input"
     memo::MemoTable
+
+    "Queue for rules that should match, used only internally."
     q::PikaQueue
+
+    "Match tree (folded into a vector)"
     matches::Vector{Match}
+
+    "Parser input, can be used to reconstruct match data."
     input::I
 end
 

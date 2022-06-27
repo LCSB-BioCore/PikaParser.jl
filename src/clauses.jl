@@ -222,52 +222,52 @@ match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState) =
 # "User" view of the clauses, for parsetree traversing
 #
 
-function user_view(::Clause, parse::ParseResult, mid::Int)
+function user_view(::Clause, st::ParserState, mid::Int)
     # generic case
-    m = parse.matches[mid]
+    m = st.matches[mid]
     UserMatch(m.pos, m.len, Int[])
 end
 
-function user_view(x::Union{Seq,First,FollowedBy}, parse::ParseResult, mid::Int)
-    m = parse.matches[mid]
+function user_view(x::Union{Seq,First,FollowedBy}, st::ParserState, mid::Int)
+    m = st.matches[mid]
     UserMatch(m.pos, m.len, m.submatches)
 end
 
-function user_view(x::OneOrMore, parse::ParseResult, mid::Int)
+function user_view(x::OneOrMore, st::ParserState, mid::Int)
     len = 1
     m = mid
-    while parse.matches[m].option_idx == 1
+    while st.matches[m].option_idx == 1
         len += 1
-        m = parse.matches[m].submatches[2]
+        m = st.matches[m].submatches[2]
     end
     res = Vector{Int}(undef, len)
     m = mid
     idx = 1
-    while parse.matches[m].option_idx == 1
-        res[idx] = parse.matches[m].submatches[1]
+    while st.matches[m].option_idx == 1
+        res[idx] = st.matches[m].submatches[1]
         idx += 1
-        m = parse.matches[m].submatches[2]
+        m = st.matches[m].submatches[2]
     end
-    res[idx] = parse.matches[m].submatches[1]
-    m = parse.matches[mid]
+    res[idx] = st.matches[m].submatches[1]
+    m = st.matches[mid]
     UserMatch(m.pos, m.len, res)
 end
 
-function user_view(x::ZeroOrMore, parse::ParseResult, mid::Int)
+function user_view(x::ZeroOrMore, st::ParserState, mid::Int)
     len = 0
     m = mid
-    while parse.matches[m].option_idx == 1
+    while st.matches[m].option_idx == 1
         len += 1
-        m = parse.matches[m].submatches[2]
+        m = st.matches[m].submatches[2]
     end
     res = Vector{Int}(undef, len)
     m = mid
     idx = 1
-    while parse.matches[m].option_idx == 1
-        res[idx] = parse.matches[m].submatches[1]
+    while st.matches[m].option_idx == 1
+        res[idx] = st.matches[m].submatches[1]
         idx += 1
-        m = parse.matches[m].submatches[2]
+        m = st.matches[m].submatches[2]
     end
-    m = parse.matches[mid]
+    m = st.matches[mid]
     UserMatch(m.pos, m.len, res)
 end
