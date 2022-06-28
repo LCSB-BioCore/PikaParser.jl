@@ -47,46 +47,59 @@ function make_grammar(
 
     all(closed) || error("some grammar rules not reachable from starts")
 
-    name_idx = Dict{G,Int}(rid => topo_order_idx[rule_idx[rid]] for (rid, _) in rules)
     topo_order = invperm(topo_order_idx)
+    reordered = rules[topo_order]
 
-    # Possible problem: tail clause of a cycle that matches epsilon is quite
-    # likely not emptiable (unless really lucky), but it might get emptiable if
-    # cycle head clause would be emptiable (which is default false).
-    #
-    # As questions:
-    # 1] can there be a whole cycle that matches epsilons? (no)
-    # 2] can you generate an empty match of the topologically lowest clause
-    #    ("cycling one") based on the fact that the head of the cycle (highest
-    #    clause) would generate epsilon? (no idea, but I didn't find a grammar
-    #    that could actually generate this problem.)
-    #
-    # Possible improvement: this only flips stuff to true, there are only
-    # finite possible flips -> we can queue the reflips
-    emptiable = fill(false, length(topo_order))
-    seed = [Set{Int}() for _ in eachindex(topo_order)]
+    # squash clause names to integers
+    name_idx = Dict{G,Int}(rid => topo_order_idx[rule_idx[rid]] for (rid, _) in rules)
+    clauses = Clause{Int}[
+        rechildren(cl, [name_idx[chcl] for chcl in child_clauses(cl)]) for
+        (_, cl) in reordered
+    ]
 
-    for (i, idx) in enumerate(topo_order)
-        children_emptiable = [
-            emptiable[topo_order_idx[rule_idx[cc]]] for
-            cc in child_clauses(last(rules[idx]))
-        ]
-        emptiable[i] = can_match_epsilon(last(rules[idx]), children_emptiable)
-        for sp in seeded_by(last(rules[idx]), children_emptiable)
-            push!(seed[topo_order_idx[rule_idx[sp]]], i)
+    # Flood-fill the "canMatchZeroChar" property (aka emptiable here).
+    # This terminates because the total amount of possible flips of the
+    # booleans is finite. Because of possible cycles that can match zero chars,
+    # we do not use the original "topo-order fill" algorithm but restart a node
+    # in case the emptiable status of some of its reverse children changes. For
+    # correctness `can_match_epsilon` for each clause must be monotonic in the
+    # second parameter.
+    emptiable = fill(false, length(clauses))
+    parent_clauses = [Set{Int}() for _ in eachindex(clauses)]
+    for (cid, c) in enumerate(clauses)
+        for chid in child_clauses(c)
+            push!(parent_clauses[chid], cid)
+        end
+    end
+    parent_clauses = collect.(parent_clauses)
+    q = PikaQueue(eachindex(clauses))
+
+    while !isempty(q)
+        cur = pop!(q)
+        emptiable[cur] && continue
+        emptiable[cur] = can_match_epsilon(clauses[cur], emptiable[parent_clauses[cur]])
+        if emptiable[cur]
+            # there was a flip!
+            for pid in parent_clauses[cur]
+                push!(q, pid)
+            end
         end
     end
 
-    reordered = rules[topo_order]
+    # reconstruct the 'seeds' relationship from 'seeded-by'
+    seed_clauses = [Set{Int}() for _ in eachindex(clauses)]
+    for (cid, c) in enumerate(clauses)
+        for chid in seeded_by(c, emptiable[child_clauses(c)])
+            push!(seed_clauses[chid], cid)
+        end
+    end
+
     Grammar{G}(
         Base.first.(reordered),
         Dict{G,Int}(rid => i for (i, (rid, _)) in enumerate(reordered)),
-        Clause{Int}[
-            rechildren(cl, [name_idx[chcl] for chcl in child_clauses(cl)]) for
-            (_, cl) in reordered
-        ],
+        clauses,
         emptiable,
-        collect.(seed),
-        [i for (i, r) in enumerate(reordered) if isterminal(last(r))],
+        collect.(seed_clauses),
+        [i for (i, c) in enumerate(clauses) if isterminal(c)],
     )
 end
