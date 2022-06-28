@@ -76,13 +76,13 @@ function make_grammar(
 
     while !isempty(q)
         cur = pop!(q)
-        if emptiable[cur]
-            continue
-        end
+        emptiable[cur] && continue
         emptiable[cur] = can_match_epsilon(clauses[cur], emptiable[parent_clauses[cur]])
         if emptiable[cur]
             # there was a flip!
-            push!.(Ref(q), parent_clauses[cur])
+            for pid in parent_clauses[cur]
+                push!(q, pid)
+            end
         end
     end
 
