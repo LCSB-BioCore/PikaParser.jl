@@ -1,4 +1,12 @@
-using Documenter, PikaParser
+using Documenter, Literate, PikaParser
+
+examples = filter(x -> endswith(x, ".jl"), readdir(joinpath(@__DIR__, "src"), join = true))
+
+for example in examples
+    Literate.markdown(example, joinpath(@__DIR__, "src"))
+end
+
+example_mds = first.(splitext.(basename.(examples))) .* ".md"
 
 makedocs(
     modules = [PikaParser],
@@ -6,7 +14,7 @@ makedocs(
     format = Documenter.HTML(),
     sitename = "PikaParser.jl",
     linkcheck = false,
-    pages = ["README" => "index.md", "Reference" => "reference.md"],
+    pages = ["README" => "index.md"; example_mds; "Reference" => "reference.md"],
     strict = [:missing_docs, :cross_references],
 )
 
