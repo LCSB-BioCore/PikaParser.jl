@@ -12,7 +12,7 @@ function find_first_parse_at(st::ParserState{G}, pos::Int)::Maybe{Tuple{Int,G}} 
     tk = searchsortedfirst(st.memo, MemoKey(0, pos - 1))
     tk == pastendsemitoken(st.memo) && return nothing
     k = deref_key((st.memo, tk))
-    return (k.pos, st.grammar.names[k.clause])
+    return (st.memo[k], st.grammar.names[k.clause])
 end
 
 """
