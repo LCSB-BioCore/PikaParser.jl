@@ -19,35 +19,31 @@ function make_grammar(
     rule_idx = Dict{G,Int}(map(Base.first, rules) .=> eachindex(rules))
 
     # compute the topological ordering
-    queued = fill(false, n_rules)
-    opened = fill(false, n_rules)
-    closed = fill(false, n_rules)
+    edges = [child_clauses(r) for (_, r) in rules]
+    opened = fill(0, n_rules)
     stk = [rule_idx[s] for s in starts]
-    queued[stk[1]] = true
     topo_order_idx = fill(0, n_rules)
+    topo_order = fill(0, n_rules)
     last_order = 0
     while !isempty(stk)
         cur = last(stk)
-        if !opened[cur]
-            opened[cur] = true
-            for cc in child_clauses(last(rules[cur]))
-                ccidx = rule_idx[cc]
-                if !queued[ccidx]
-                    push!(stk, ccidx)
-                    queued[ccidx] = true
-                end
+        if opened[cur] < length(edges[cur])
+            opened[cur] += 1
+            ccidx = rule_idx[edges[cur][opened[cur]]]
+            if opened[ccidx] == 0
+                push!(stk, ccidx)
             end
-        elseif !closed[cur]
-            closed[cur] = true
+        elseif opened[cur] == length(edges[cur])
+            opened[cur] += 1
             pop!(stk)
             last_order += 1
+            topo_order[last_order] = cur
             topo_order_idx[cur] = last_order
         end
     end
 
-    all(closed) || error("some grammar rules not reachable from starts")
+    all(opened .> 0) || error("some grammar rules not reachable from starts")
 
-    topo_order = invperm(topo_order_idx)
     reordered = rules[topo_order]
 
     # squash clause names to integers
