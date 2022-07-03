@@ -12,7 +12,7 @@
             (same, next) -> :power => P.seq(next, P.token('^'), same),
             (_, restart) -> P.first(
                 :parens => P.seq(P.token('('), restart, P.token(')')),
-                :digits => P.one_or_more(P.satisfy(isdigit)),
+                :digits => P.some(P.satisfy(isdigit)),
             ),
         )...,
     )

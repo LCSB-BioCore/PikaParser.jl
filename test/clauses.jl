@@ -1,7 +1,7 @@
 
 @testset "FollowedBy-style clauses" begin
     rules = Dict(
-        "seq" => P.zero_or_more(P.first("a", "b")),
+        "seq" => P.many(P.first("a", "b")),
         "a" => P.seq(P.token(1), P.not_followed_by(P.token(1))),
         "b" => P.seq(P.token(2), P.followed_by(P.token(1))),
     )
@@ -44,7 +44,7 @@ end
 @testset "Multiple token matches" begin
     rules = Dict(
         3 => P.first(
-            11 => P.take_n(toks -> length(toks) >= 2 && toks[1] == toks[2] ? 2 : nothing),
+            11 => P.scan(toks -> length(toks) >= 2 && toks[1] == toks[2] ? 2 : nothing),
             P.tokens([:one, :two, :three]),
         ),
     )
@@ -58,4 +58,28 @@ end
         isnothing.(P.find_match_at!(p, 3, pos) for pos = 1:5) .==
         [false, false, true, false, true],
     )
+end
+
+@testset "Tie" begin
+    rules = Dict(
+        :digit => P.satisfy(isdigit),
+        :sep => P.token(','),
+        :list => P.tie(P.seq(P.seq(:digit), P.many(:sepdigit => P.seq(:sep, :digit)))),
+    )
+
+    g = P.make_grammar([:list], P.flatten(rules))
+
+    input = collect("1,2,3,4,5")
+    p = P.parse(g, input)
+
+    mid = P.find_match_at!(p, :list, 1)
+    @test !isnothing(mid)
+    @test p.matches[mid].len == length(input)
+    @test P.traverse_match(p, mid) == :(list(
+        digit(),
+        sepdigit(sep(), digit()),
+        sepdigit(sep(), digit()),
+        sepdigit(sep(), digit()),
+        sepdigit(sep(), digit()),
+    ))
 end

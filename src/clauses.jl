@@ -3,7 +3,7 @@
 # Clause implementation
 #
 
-isterminal(x::Union{Satisfy,TakeN,Token,Tokens}) = true
+isterminal(x::Union{Satisfy,Scan,Token,Tokens}) = true
 isterminal(x::Clause) = false
 
 
@@ -28,17 +28,21 @@ function child_clauses(x::FollowedBy{G})::Vector{G} where {G}
     G[x.follow]
 end
 
-function child_clauses(x::OneOrMore{G})::Vector{G} where {G}
+function child_clauses(x::Some{G})::Vector{G} where {G}
     G[x.item]
 end
 
-function child_clauses(x::ZeroOrMore{G})::Vector{G} where {G}
+function child_clauses(x::Many{G})::Vector{G} where {G}
     G[x.item]
+end
+
+function child_clauses(x::Tie{G})::Vector{G} where {G}
+    G[x.tuple]
 end
 
 
 rechildren(x::Satisfy, v::Vector) = Satisfy{valtype(v)}(x.match)
-rechildren(x::TakeN, v::Vector) = TakeN{valtype(v)}(x.match)
+rechildren(x::Scan, v::Vector) = Scan{valtype(v)}(x.match)
 rechildren(x::Token, v::Vector) = Token{valtype(v)}(x.token)
 rechildren(x::Tokens, v::Vector) = Tokens{valtype(v)}(x.tokens)
 rechildren(x::Epsilon, v::Vector) = Epsilon{valtype(v)}()
@@ -47,8 +51,9 @@ rechildren(x::Seq, v::Vector) = Seq{valtype(v)}(v)
 rechildren(x::First, v::Vector) = First{valtype(v)}(v)
 rechildren(x::NotFollowedBy, v::Vector) = NotFollowedBy{valtype(v)}(Base.first(v))
 rechildren(x::FollowedBy, v::Vector) = FollowedBy{valtype(v)}(Base.first(v))
-rechildren(x::OneOrMore, v::Vector) = OneOrMore{valtype(v)}(Base.first(v))
-rechildren(x::ZeroOrMore, v::Vector) = ZeroOrMore{valtype(v)}(Base.first(v))
+rechildren(x::Some, v::Vector) = Some{valtype(v)}(Base.first(v))
+rechildren(x::Many, v::Vector) = Many{valtype(v)}(Base.first(v))
+rechildren(x::Tie, v::Vector) = Tie{valtype(v)}(Base.first(v))
 
 
 function seeded_by(x::Clause{G}, ::Vector{Bool})::Vector{G} where {G}
@@ -73,11 +78,15 @@ function seeded_by(x::FollowedBy{G}, ::Vector{Bool})::Vector{G} where {G}
     child_clauses(x)
 end
 
-function seeded_by(x::OneOrMore{G}, ::Vector{Bool})::Vector{G} where {G}
+function seeded_by(x::Some{G}, ::Vector{Bool})::Vector{G} where {G}
     child_clauses(x)
 end
 
-function seeded_by(x::ZeroOrMore{G}, ::Vector{Bool})::Vector{G} where {G}
+function seeded_by(x::Many{G}, ::Vector{Bool})::Vector{G} where {G}
+    child_clauses(x)
+end
+
+function seeded_by(x::Tie{G}, ch::Vector{Bool})::Vector{G} where {G}
     child_clauses(x)
 end
 
@@ -89,7 +98,7 @@ better_match_than(::First, new::Match, old::Match) =
 better_match_than(::Clause, new::Match, old::Match) = new.len > old.len
 
 
-can_match_epsilon(x::Union{Satisfy,TakeN,Token,Tokens}, ::Vector{Bool}) = false
+can_match_epsilon(x::Union{Satisfy,Scan,Token,Tokens}, ::Vector{Bool}) = false
 can_match_epsilon(x::Epsilon, ::Vector{Bool}) = true
 can_match_epsilon(x::Fail, ::Vector{Bool}) = false
 can_match_epsilon(x::Seq, ch::Vector{Bool}) = all(ch)
@@ -99,8 +108,9 @@ can_match_epsilon(x::First, ch::Vector{Bool}) =
 can_match_epsilon(x::NotFollowedBy, ch::Vector{Bool}) =
     ch[1] ? throw("NotFollowedBy epsilon match") : true
 can_match_epsilon(x::FollowedBy, ch::Vector{Bool}) = ch[1]
-can_match_epsilon(x::OneOrMore, ch::Vector{Bool}) = ch[1]
-can_match_epsilon(x::ZeroOrMore, ch::Vector{Bool}) = true
+can_match_epsilon(x::Some, ch::Vector{Bool}) = ch[1]
+can_match_epsilon(x::Many, ch::Vector{Bool}) = true
+can_match_epsilon(x::Tie, ch::Vector{Bool}) = ch[1]
 
 
 #
@@ -113,7 +123,7 @@ function match_clause!(x::Satisfy, id::Int, pos::Int, st::ParserState)::MatchRes
     end
 end
 
-function match_clause!(x::TakeN, id::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::Scan, id::Int, pos::Int, st::ParserState)::MatchResult
     match_len = x.match(view(st.input, pos:length(st.input)))
     if !isnothing(match_len)
         new_match!(Match(id, pos, match_len, 0, []), st)
@@ -180,7 +190,7 @@ function match_clause!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::Match
     end
 end
 
-function match_clause!(x::OneOrMore, id::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::Some, id::Int, pos::Int, st::ParserState)::MatchResult
     mid1 = lookup_best_match_id!(MemoKey(x.item, pos), st)
     isnothing(mid1) && return nothing
     mid2 = lookup_best_match_id!(MemoKey(id, pos + st.matches[mid1].len), st)
@@ -194,14 +204,14 @@ function match_clause!(x::OneOrMore, id::Int, pos::Int, st::ParserState)::MatchR
     end
 end
 
-function match_clause!(x::ZeroOrMore, id::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::Many, id::Int, pos::Int, st::ParserState)::MatchResult
     mid1 = lookup_best_match_id!(MemoKey(x.item, pos), st)
     if isnothing(mid1)
         return match_epsilon!(x, id, pos, st)
     end
     mid2 = lookup_best_match_id!(MemoKey(id, pos + st.matches[mid1].len), st)
     if isnothing(mid2)
-        error(AssertionError("ZeroOrMore did not match, but it should have had!"))
+        error(AssertionError("Many did not match, but it should have had!"))
     else
         new_match!(
             Match(id, pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
@@ -209,6 +219,13 @@ function match_clause!(x::ZeroOrMore, id::Int, pos::Int, st::ParserState)::Match
         )
     end
 end
+
+function match_clause!(x::Tie, id::Int, pos::Int, st::ParserState)::MatchResult
+    mid = lookup_best_match_id!(MemoKey(x.tuple, pos), st)
+    isnothing(mid) && return nothing
+    new_match!(Match(id, pos, st.matches[mid].len, 1, [mid]), st)
+end
+
 
 
 match_epsilon!(x::Clause, id::Int, pos::Int, st::ParserState) =
@@ -233,7 +250,7 @@ function user_view(x::Union{Seq,First,FollowedBy}, st::ParserState, mid::Int)
     UserMatch(m.pos, m.len, m.submatches)
 end
 
-function user_view(x::OneOrMore, st::ParserState, mid::Int)
+function user_view(x::Some, st::ParserState, mid::Int)
     len = 1
     m = mid
     while st.matches[m].option_idx == 1
@@ -253,7 +270,7 @@ function user_view(x::OneOrMore, st::ParserState, mid::Int)
     UserMatch(m.pos, m.len, res)
 end
 
-function user_view(x::ZeroOrMore, st::ParserState, mid::Int)
+function user_view(x::Many, st::ParserState, mid::Int)
     len = 0
     m = mid
     while st.matches[m].option_idx == 1
@@ -270,4 +287,25 @@ function user_view(x::ZeroOrMore, st::ParserState, mid::Int)
     end
     m = st.matches[mid]
     UserMatch(m.pos, m.len, res)
+end
+
+function user_view(x::Tie, st::ParserState, mid::Int)
+    m = st.matches[mid]
+    if m.option_idx == 0
+        # epsilon match
+        return UserMatch(m.pos, m.len, [])
+    end
+
+    tmid = m.submatches[1]
+    tm = st.matches[tmid]
+
+    ccmids = Int[]
+    for cmid in user_view(st.grammar.clauses[tm.clause], st, tmid).submatches
+        for ccmid in
+            user_view(st.grammar.clauses[st.matches[cmid].clause], st, cmid).submatches
+            push!(ccmids, ccmid)
+        end
+    end
+
+    UserMatch(m.pos, m.len, ccmids)
 end

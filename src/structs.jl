@@ -10,7 +10,7 @@ Abstract type for all clauses that match a grammar with rule labels of type `G`.
 
 Currently implemented clauses:
 - [`Satisfy`](@ref)
-- [`TakeN`](@ref)
+- [`Scan`](@ref)
 - [`Token`](@ref)
 - [`Tokens`](@ref)
 - [`Epsilon`](@ref)
@@ -19,8 +19,9 @@ Currently implemented clauses:
 - [`First`](@ref)
 - [`NotFollowedBy`](@ref)
 - [`FollowedBy`](@ref)
-- [`OneOrMore`](@ref)
-- [`ZeroOrMore`](@ref)
+- [`Some`](@ref)
+- [`Many`](@ref)
+- [`Tie`](@ref)
 
 Often it is better to use convenience functions for rule construction, such as [`seq`](@ref) or [`token`](@ref); see [`flatten`](@ref) for details.
 """
@@ -42,13 +43,16 @@ end
 """
 $(TYPEDEF)
 
-A single terminal. Given the input stream and a position in it, the `match`
-function returns the length of the match, or `nothing` if there's no match.
+A single terminal, possibly made out of multiple input tokens.
+
+Given the input stream and a position in it, the `match` function scans the
+input forward and returns the length of the terminal starting at the position.
+In case there's no match, it returns `nothing`.
 
 # Fields
 $(TYPEDFIELDS)
 """
-struct TakeN{G} <: Clause{G}
+struct Scan{G} <: Clause{G}
     match::Function
 end
 
@@ -148,7 +152,7 @@ Greedily matches a sequence of matches, with at least 1 match.
 # Fields
 $(TYPEDFIELDS)
 """
-struct OneOrMore{G} <: Clause{G}
+struct Some{G} <: Clause{G}
     item::G
 end
 
@@ -160,8 +164,24 @@ Greedily matches a sequence of matches that can be empty.
 # Fields
 $(TYPEDFIELDS)
 """
-struct ZeroOrMore{G} <: Clause{G}
+struct Many{G} <: Clause{G}
     item::G
+end
+
+"""
+$(TYPEDEF)
+
+Produces the very same match as the `item`, but concatenates the user views of
+the resulting submatches into one big vector. (Thus basically squashing the 2
+levels of child matches to a single one.) Useful e.g. for lists with different
+initial or final elements. (As a result, the `item` and its immediate children
+are _not_ going to be present in the parse tree.)
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct Tie{G} <: Clause{G}
+    tuple::G
 end
 
 #

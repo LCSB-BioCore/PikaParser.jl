@@ -2,7 +2,7 @@
 @testset "Run example from README" begin
 
     rules = Dict(
-        :digits => P.one_or_more(:digit => P.satisfy(isdigit)),
+        :digits => P.some(:digit => P.satisfy(isdigit)),
         :parens => P.seq(
             P.token('('),
             :expr => P.first(:plusexpr, :minusexpr, :digits, :parens),
