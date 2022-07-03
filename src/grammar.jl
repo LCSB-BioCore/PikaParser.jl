@@ -77,7 +77,8 @@ function make_grammar(
     while !isempty(q)
         cur = pop!(q)
         emptiable[cur] && continue
-        emptiable[cur] = can_match_epsilon(clauses[cur], emptiable[parent_clauses[cur]])
+        emptiable[cur] =
+            can_match_epsilon(clauses[cur], emptiable[child_clauses(clauses[cur])])
         if emptiable[cur]
             # there was a flip!
             for pid in parent_clauses[cur]
