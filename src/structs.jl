@@ -10,7 +10,7 @@ Abstract type for all clauses that match a grammar with rule labels of type `G`.
 
 Currently implemented clauses:
 - [`Satisfy`](@ref)
-- [`TakeN`](@ref)
+- [`Scan`](@ref)
 - [`Token`](@ref)
 - [`Tokens`](@ref)
 - [`Epsilon`](@ref)
@@ -42,13 +42,16 @@ end
 """
 $(TYPEDEF)
 
-A single terminal. Given the input stream and a position in it, the `match`
-function returns the length of the match, or `nothing` if there's no match.
+A single terminal, possibly made out of multiple input tokens.
+
+Given the input stream and a position in it, the `match` function scans the
+input forward and returns the length of the terminal starting at the position.
+In case there's no match, it returns `nothing`.
 
 # Fields
 $(TYPEDFIELDS)
 """
-struct TakeN{G} <: Clause{G}
+struct Scan{G} <: Clause{G}
     match::Function
 end
 

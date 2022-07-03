@@ -13,14 +13,14 @@ satisfy(f::Function) = Satisfy{Any}(f)
 """
 $(TYPEDSIGNATURES)
 
-Build a [`TakeN`](@ref) clause. Translate to strongly typed grammar with [`flatten`](@ref).
+Build a [`Scan`](@ref) clause. Translate to strongly typed grammar with [`flatten`](@ref).
 
 # Example
 
     # rule to match a pair of equal tokens
-    take_n(m -> m[1] == m[2] ? 2 : nothing)
+    scan(m -> m[1] == m[2] ? 2 : nothing)
 """
-take_n(f::Function) = TakeN{Any}(f)
+scan(f::Function) = Scan{Any}(f)
 
 """
 $(TYPEDSIGNATURES)
@@ -233,7 +233,7 @@ unnested ruleset, usable in [`make_grammar`](@ref). This allows use of
 convenience rule building functions:
 
 - [`satisfy`](@ref)
-- [`take_n`](@ref)
+- [`scan`](@ref)
 - [`token`](@ref)
 - [`tokens`](@ref)
 - [`epsilon`](@ref) (not a function!)

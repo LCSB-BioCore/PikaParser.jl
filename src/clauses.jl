@@ -3,7 +3,7 @@
 # Clause implementation
 #
 
-isterminal(x::Union{Satisfy,TakeN,Token,Tokens}) = true
+isterminal(x::Union{Satisfy,Scan,Token,Tokens}) = true
 isterminal(x::Clause) = false
 
 
@@ -38,7 +38,7 @@ end
 
 
 rechildren(x::Satisfy, v::Vector) = Satisfy{valtype(v)}(x.match)
-rechildren(x::TakeN, v::Vector) = TakeN{valtype(v)}(x.match)
+rechildren(x::Scan, v::Vector) = Scan{valtype(v)}(x.match)
 rechildren(x::Token, v::Vector) = Token{valtype(v)}(x.token)
 rechildren(x::Tokens, v::Vector) = Tokens{valtype(v)}(x.tokens)
 rechildren(x::Epsilon, v::Vector) = Epsilon{valtype(v)}()
@@ -89,7 +89,7 @@ better_match_than(::First, new::Match, old::Match) =
 better_match_than(::Clause, new::Match, old::Match) = new.len > old.len
 
 
-can_match_epsilon(x::Union{Satisfy,TakeN,Token,Tokens}, ::Vector{Bool}) = false
+can_match_epsilon(x::Union{Satisfy,Scan,Token,Tokens}, ::Vector{Bool}) = false
 can_match_epsilon(x::Epsilon, ::Vector{Bool}) = true
 can_match_epsilon(x::Fail, ::Vector{Bool}) = false
 can_match_epsilon(x::Seq, ch::Vector{Bool}) = all(ch)
@@ -113,7 +113,7 @@ function match_clause!(x::Satisfy, id::Int, pos::Int, st::ParserState)::MatchRes
     end
 end
 
-function match_clause!(x::TakeN, id::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::Scan, id::Int, pos::Int, st::ParserState)::MatchResult
     match_len = x.match(view(st.input, pos:length(st.input)))
     if !isnothing(match_len)
         new_match!(Match(id, pos, match_len, 0, []), st)
