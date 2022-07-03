@@ -1,8 +1,8 @@
 
 @testset "FollowedBy-style clauses" begin
     rules = Dict(
-        "seq" => P.many(P.first("a", "b")),
-        "a" => P.seq(P.token(1), P.not_followed_by(P.token(1))),
+        "seq" => P.many(P.first(P.fail, "a", "b")),
+        "a" => P.seq(P.token(1), P.epsilon, P.not_followed_by(P.token(1))),
         "b" => P.seq(P.token(2), P.followed_by(P.token(1))),
     )
 
@@ -20,11 +20,11 @@
         m,
         fold = (rule, match, subvals) -> Expr(:call, Symbol(rule), subvals...),
     ) == :(seq(
-        seq_1(a(a_1(), a_2())),
+        seq_1(a(a_1(), a_2(), a_3())),
         seq_1(b(b_1(), b_2(b_2_1()))),
-        seq_1(a(a_1(), a_2())),
+        seq_1(a(a_1(), a_2(), a_3())),
         seq_1(b(b_1(), b_2(b_2_1()))),
-        seq_1(a(a_1(), a_2())),
+        seq_1(a(a_1(), a_2(), a_3())),
     ))
 
     toks = [1, 1, 2]
