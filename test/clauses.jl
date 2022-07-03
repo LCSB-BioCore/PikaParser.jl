@@ -59,3 +59,27 @@ end
         [false, false, true, false, true],
     )
 end
+
+@testset "Tie" begin
+    rules = Dict(
+        :digit => P.satisfy(isdigit),
+        :sep => P.token(','),
+        :list => P.tie(P.seq(P.seq(:digit), P.many(:sepdigit => P.seq(:sep, :digit)))),
+    )
+
+    g = P.make_grammar([:list], P.flatten(rules))
+
+    input = collect("1,2,3,4,5")
+    p = P.parse(g, input)
+
+    mid = P.find_match_at!(p, :list, 1)
+    @test !isnothing(mid)
+    @test p.matches[mid].len == length(input)
+    @test P.traverse_match(p, mid) == :(list(
+        digit(),
+        sepdigit(sep(), digit()),
+        sepdigit(sep(), digit()),
+        sepdigit(sep(), digit()),
+        sepdigit(sep(), digit()),
+    ))
+end

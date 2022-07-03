@@ -139,6 +139,17 @@ many(x) = Many(x)
 """
 $(TYPEDSIGNATURES)
 
+Build a [`Tie`](@ref) clause. Translate to strongly typed grammar with [`flatten`](@ref).
+
+# Example
+
+    :alternating_A_and_B => tie(many(seq(:A, :B)))
+"""
+tie(x) = Tie(x)
+
+"""
+$(TYPEDSIGNATURES)
+
 Convert a list of rules of increasing associativity to a typical
 precedence-handling "failthrough" construction. The result must be
 post-processed by [`flatten`](@ref).
@@ -244,6 +255,7 @@ convenience rule building functions:
 - [`followed_by`](@ref)
 - [`some`](@ref)
 - [`many`](@ref)
+- [`tie`](@ref)
 - [`precedence_cascade`](@ref) (not backed by an actual [`Clause`](@ref)!)
 
 Anonymous nested rules are assigned names that are constructed by `childlabel`

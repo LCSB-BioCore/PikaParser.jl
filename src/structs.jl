@@ -21,6 +21,7 @@ Currently implemented clauses:
 - [`FollowedBy`](@ref)
 - [`Some`](@ref)
 - [`Many`](@ref)
+- [`Tie`](@ref)
 
 Often it is better to use convenience functions for rule construction, such as [`seq`](@ref) or [`token`](@ref); see [`flatten`](@ref) for details.
 """
@@ -165,6 +166,22 @@ $(TYPEDFIELDS)
 """
 struct Many{G} <: Clause{G}
     item::G
+end
+
+"""
+$(TYPEDEF)
+
+Produces the very same match as the `item`, but concatenates the user views of
+the resulting submatches into one big vector. (Thus basically squashing the 2
+levels of child matches to a single one.) Useful e.g. for lists with different
+initial or final elements. (As a result, the `item` and its immediate children
+are _not_ going to be present in the parse tree.)
+
+# Fields
+$(TYPEDFIELDS)
+"""
+struct Tie{G} <: Clause{G}
+    tuple::G
 end
 
 #
