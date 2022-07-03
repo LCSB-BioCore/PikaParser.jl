@@ -19,8 +19,8 @@ Currently implemented clauses:
 - [`First`](@ref)
 - [`NotFollowedBy`](@ref)
 - [`FollowedBy`](@ref)
-- [`OneOrMore`](@ref)
-- [`ZeroOrMore`](@ref)
+- [`Some`](@ref)
+- [`Many`](@ref)
 
 Often it is better to use convenience functions for rule construction, such as [`seq`](@ref) or [`token`](@ref); see [`flatten`](@ref) for details.
 """
@@ -151,7 +151,7 @@ Greedily matches a sequence of matches, with at least 1 match.
 # Fields
 $(TYPEDFIELDS)
 """
-struct OneOrMore{G} <: Clause{G}
+struct Some{G} <: Clause{G}
     item::G
 end
 
@@ -163,7 +163,7 @@ Greedily matches a sequence of matches that can be empty.
 # Fields
 $(TYPEDFIELDS)
 """
-struct ZeroOrMore{G} <: Clause{G}
+struct Many{G} <: Clause{G}
     item::G
 end
 

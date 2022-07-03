@@ -1,8 +1,8 @@
 
 @testset "Fast matching" begin
     rules = Dict(
-        :digits => P.one_or_more(:digit => P.fail),
-        :seq => P.seq(:digits, P.zero_or_more(:cont => P.seq(:sep => P.fail, :digits))),
+        :digits => P.some(:digit => P.fail),
+        :seq => P.seq(:digits, P.many(:cont => P.seq(:sep => P.fail, :digits))),
     )
 
     g = P.make_grammar([:seq], P.flatten(rules))

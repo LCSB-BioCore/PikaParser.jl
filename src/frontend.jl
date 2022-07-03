@@ -117,24 +117,24 @@ followed_by(x) = FollowedBy(x)
 """
 $(TYPEDSIGNATURES)
 
-Build a [`OneOrMore`](@ref) clause. Translate to strongly typed grammar with [`flatten`](@ref).
+Build a [`Some`](@ref) clause. Translate to strongly typed grammar with [`flatten`](@ref).
 
 # Example
 
-    one_or_more(satisfy(isspace))
+    some(satisfy(isspace))
 """
-one_or_more(x) = OneOrMore(x)
+some(x) = Some(x)
 
 """
 $(TYPEDSIGNATURES)
 
-Build a [`ZeroOrMore`](@ref) clause. Translate to strongly typed grammar with [`flatten`](@ref).
+Build a [`Many`](@ref) clause. Translate to strongly typed grammar with [`flatten`](@ref).
 
 # Example
 
-    seq(:quote, zero_or_more(:quote_contents), :quote)
+    seq(:quote, many(:quote_contents), :quote)
 """
-zero_or_more(x) = ZeroOrMore(x)
+many(x) = Many(x)
 
 """
 $(TYPEDSIGNATURES)
@@ -170,7 +170,7 @@ ruleset.
             (same, next) -> :power => seq(next, token('^'), same), # right associative
             (_, restart) -> first(
                 :parens => seq(token('('), restart, token(')')),
-                :digits => one_or_more(satisfy(isdigit)),
+                :digits => some(satisfy(isdigit)),
             ),
         )...,
     )
@@ -242,8 +242,8 @@ convenience rule building functions:
 - [`first`](@ref)
 - [`not_followed_by`](@ref)
 - [`followed_by`](@ref)
-- [`one_or_more`](@ref)
-- [`zero_or_more`](@ref)
+- [`some`](@ref)
+- [`many`](@ref)
 - [`precedence_cascade`](@ref) (not backed by an actual [`Clause`](@ref)!)
 
 Anonymous nested rules are assigned names that are constructed by `childlabel`

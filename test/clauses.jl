@@ -1,7 +1,7 @@
 
 @testset "FollowedBy-style clauses" begin
     rules = Dict(
-        "seq" => P.zero_or_more(P.first("a", "b")),
+        "seq" => P.many(P.first("a", "b")),
         "a" => P.seq(P.token(1), P.not_followed_by(P.token(1))),
         "b" => P.seq(P.token(2), P.followed_by(P.token(1))),
     )

@@ -26,7 +26,7 @@ are free to use integers, strings, or anything else.
 ```julia
 rules = Dict(
     # match a sequence of characters that satisfies `isdigit`
-    :digits => P.one_or_more(:digit => P.satisfy(isdigit)),
+    :digits => P.some(:digit => P.satisfy(isdigit)),
 
     # expression in parentheses
     :parens => P.seq(
