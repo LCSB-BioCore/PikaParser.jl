@@ -60,7 +60,8 @@ p = P.parse(P.make_grammar([:top], P.flatten(rules)), collect("""
 # match cannot be found, we will try to match at least something and report it.
 # The memo table is conveniently ordered by match position.
 
-top_matches = [(key.pos, mid) for (key, mid) = p.memo if p.grammar.names[key.clause] == :top]
+top_matches =
+    [(key.pos, mid) for (key, mid) = p.memo if p.grammar.names[key.clause] == :top]
 
 # Prepare a folding function:
 
