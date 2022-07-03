@@ -61,21 +61,13 @@ input = collect("12-(34+567-8)")
 p = P.parse(g, input)
 ```
 
-You can find if something matched:
-```julia
-P.find_first_parse_at(p, 1)
-```
-...which should return `(1, :expr)`, telling that there's a match of `:expr` at
-the first position.
-
-You can also get the match index of the match, to find more about what was
-matched:
+You can find if an expression was matched at a certain position:
 ```julia
 P.find_match_at!(p, :expr, 1)
 ```
 ...which returns an index in the match table (if found), such as `45`.
 
-You can have a look at the match. `p.matches[45]` should return
+You can have a look at the match. `p.matches[45]` should return:
 ```julia
 PikaParser.Match(10, 1, 13, 2, [44])
 ```

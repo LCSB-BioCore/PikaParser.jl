@@ -32,6 +32,36 @@ end
 """
 $(TYPEDSIGNATURES)
 
+The default function used as `open` argument in [`traverse_match`](@ref).
+"""
+default_open(rule, umatch) = (true for _ in umatch.submatches)
+
+"""
+$(TYPEDSIGNATURES)
+
+The default function used as `fold` argument in [`traverse_match`](@ref).
+"""
+default_fold(rule, umatch, subvals) = Expr(:call, rule, subvals...)
+
+"""
+$(TYPEDSIGNATURES)
+
+Get a view of input that corresponds to the given `match`. Useful for parsing
+out terminals.
+"""
+view_match(st::ParserState, match::Union{Match,UserMatch}) =
+    view(st.input, match.pos:match.pos+match.len-1)
+
+"""
+$(TYPEDSIGNATURES)
+
+Get a view of input that corresponds to the match identified by given match ID.
+"""
+view_match(st::ParserState, mid::Int) = view_match(st, st.matches[mid])
+
+"""
+$(TYPEDSIGNATURES)
+
 Given a [`Match`](@ref) index in [`ParserState`](@ref) `st`, recusively
 depth-first traverse the match tree using functions `open` (called upon
 entering a submatch) and `fold` (called upon leaving the submatch).
@@ -46,15 +76,16 @@ default, it opens the whole subtree.
 additionally a vector of folded values from the submatches. The values returned
 by `fold` invocations are collected and transferred to higher-level invocations
 of `fold`. In case `open` disabled the evaluation of a given submatch,
-`nothing` is used as the folded value for the submatch. By default, `fold` just
-collects all submatch values and produces a Julia `Expr` AST structure where
-rule expansions are represented as function calls.
+`nothing` is used as the folded value for the submatch. The default `open` and
+`fold` ([`default_open`](@ref), [`default_fold`](@ref)) just collect all
+submatch values and produce a Julia `Expr` AST structure where rule expansions
+are represented as function calls.
 """
 function traverse_match(
     st::ParserState{G},
     mid::Int;
-    open::Function = (_, umatch) -> (true for _ in umatch.submatches),
-    fold::Function = (rule, umatch, subvals) -> Expr(:call, rule, subvals...),
+    open::Function = default_open,
+    fold::Function = default_fold,
 ) where {G}
     stk = TraverseNode{G}[TraverseNode(
         0,
