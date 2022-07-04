@@ -260,10 +260,10 @@ convenience rule building functions:
 
 Anonymous nested rules are assigned names that are constructed by `childlabel`
 function (gets the original G and and integer with position integer). By
-default, `childlabel` concatenats the parent rule name, hyphen, and the position
-number to form a `Symbol` (i.e., the default works only in cases when the rules
-are labeled by Symbols, and you need to provide your own implementation for
-other grammars labeled e.g. by integers or strings).
+default, `childlabel` concatenates the parent rule name, hyphen, and the
+position number to form a `Symbol` (i.e., the default works only in cases when
+the rules are labeled by Symbols, and you need to provide your own
+implementation for other grammars labeled e.g. by integers or strings).
 """
 function flatten(
     rules::Dict{G},

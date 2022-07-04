@@ -6,7 +6,7 @@ the specification by Luke A. D. Hutchison (see
 https://github.com/lukehutch/pikaparser).
 
 Pika parsers are pretty fast, they are easy to specify, carry the ability to
-unambigously match all PEG grammars including the left-recursive ones, and
+unambiguously match all PEG grammars including the left-recursive ones, and
 provide great mechanisms for parsing error recovery.
 
 The code is new, **feedback is welcome**.
@@ -53,7 +53,7 @@ The grammar is now prepared for parsing.
 
 Pika parsers require frequent indexing of the input, Strings thus need to be
 converted to character vectors to be usable as parser input. (To improve
-performance, it is adviseable to lex your input into a vector of more complex
+performance, it is advisable to lex your input into a vector of more complex
 tokens.)
 
 ```julia
