@@ -164,15 +164,6 @@ function match_clause!(x::First, id::Int, pos::Int, st::ParserState)::MatchResul
     nothing
 end
 
-function match_clause!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
-    mid = lookup_best_match_id!(MemoKey(x.reserved, pos), st)
-    if isnothing(mid)
-        new_match!(Match(id, pos, 0, 0, []), st)
-    else
-        nothing
-    end
-end
-
 function match_clause!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
     mid = lookup_best_match_id!(MemoKey(x.follow, pos), st)
     if isnothing(mid)
@@ -219,9 +210,18 @@ end
 
 match_epsilon!(x::Clause, id::Int, pos::Int, st::ParserState) =
     new_match!(Match(id, pos, 0, 0, []), st)
-#TODO this needs a recursion guard!
-match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState) =
-    match_clause!(x, id, pos, st)
+
+function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)
+    # This might technically cause infinite recursion, byt a cycle of
+    # NotFollowedBy clauses is disallowed by the error thrown by
+    # can_match_epsilon(::NotFollowedBy, ...)
+    mid = lookup_best_match_id!(MemoKey(x.reserved, pos), st)
+    if isnothing(mid)
+        new_match!(Match(id, pos, 0, 0, []), st)
+    else
+        nothing
+    end
+end
 
 
 #
