@@ -22,35 +22,33 @@ g = P.make_grammar(
 )</code></pre><p>The grammar is now prepared for parsing.</p><p><strong>Parsing text</strong></p><p>Pika parsers require frequent indexing of the input, Strings thus need to be converted to character vectors to be usable as parser input. (To improve performance, it is adviseable to lex your input into a vector of more complex tokens.)</p><pre><code class="language-julia hljs">input = collect(&quot;12-(34+567-8)&quot;)
 p = P.parse(g, input)</code></pre><p>You can find if an expression was matched at a certain position:</p><pre><code class="language-julia hljs">P.find_match_at!(p, :expr, 1)</code></pre><p>...which returns an index in the match table (if found), such as <code>45</code>.</p><p>You can have a look at the match. <code>p.matches[45]</code> should return:</p><pre><code class="language-julia hljs">PikaParser.Match(10, 1, 13, 2, [44])</code></pre><p>where <code>10</code> is the renumbered rule ID for <code>:expr</code>, <code>1</code> is the starting position in the input, <code>13</code> is the length of the match (here, that is the whole input); <code>2</code> is the option index (in this case, it points to <code>:expr</code> option 2, which is <code>:minusexpr</code>), and 44 is the submatch of <code>:minusexpr</code>.</p><p><strong>Recovering parsed ASTs</strong></p><p>You can use <code>traverse_match</code> to recursively walk the parse trees, to produce ASTs, and translate, interpret or evaluate the expressions:</p><pre><code class="language-julia hljs">P.traverse_match(p, P.find_match_at!(p, :expr, 1))</code></pre><p>By default, this runs through the whole match tree and transcodes the matches to Julia <code>Expr</code> AST. In this case, if you pipe the output through JuliaFormatter, you will get something like:</p><pre><code class="language-julia hljs">expr(
     minusexpr(
-        expr(digits(digit(), digit())),
-        var&quot;minusexpr-2&quot;(),
+        expr(digits(digit(&#39;1&#39;), digit(&#39;2&#39;))),
+        var&quot;minusexpr-2&quot;(&#39;-&#39;),
         expr(
             parens(
-                var&quot;parens-1&quot;(),
+                var&quot;parens-1&quot;(&#39;(&#39;),
                 expr(
                     plusexpr(
-                        expr(digits(digit(), digit())),
-                        var&quot;plusexpr-2&quot;(),
+                        expr(digits(digit(&#39;3&#39;), digit(&#39;4&#39;))),
+                        var&quot;plusexpr-2&quot;(&#39;+&#39;),
                         expr(
                             minusexpr(
-                                expr(digits(digit(), digit(), digit())),
-                                var&quot;minusexpr-2&quot;(),
-                                expr(digits(digit())),
+                                expr(digits(digit(&#39;5&#39;), digit(&#39;6&#39;), digit(&#39;7&#39;))),
+                                var&quot;minusexpr-2&quot;(&#39;-&#39;),
+                                expr(digits(digit(&#39;8&#39;))),
                             ),
                         ),
                     ),
                 ),
-                var&quot;parens-3&quot;(),
+                var&quot;parens-3&quot;(&#39;)&#39;),
             ),
         ),
     ),
 )</code></pre><p>It is straightforward to specify your own method of evaluating the parses by supplying the matchtree opening and folding functions. For example, you can evaluate the expression as follows:</p><pre><code class="language-julia hljs">P.traverse_match(p, P.find_match_at!(p, :expr, 1),
-    fold = (rule, match, subvals) -&gt;
-        rule == :digits ?
-        parse(Int, String(input[match.pos:match.pos+match.len-1])) :
-        rule == :expr ? subvals[1] :
-        rule == :parens ? subvals[2] :
-        rule == :plusexpr ? subvals[1] + subvals[3] :
-        rule == :minusexpr ? subvals[1] - subvals[3] :
-        nothing,
-)</code></pre><p>You should get the expectable result (<code>-581</code>).</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/LCSB-BioCore/PikaParser.jl/blob/1b3882311654beaa5dc57ea5e861e891a3b84157/src/PikaParser.jl#L1">source</a></section></article></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="json/">Example: Parsing JSON »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Sunday 3 July 2022 21:31">Sunday 3 July 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    fold = (m, p, subvals) -&gt;
+        m.rule == :digits ? parse(Int, String(m.view)) :
+        m.rule == :expr ? subvals[1] :
+        m.rule == :parens ? subvals[2] :
+        m.rule == :plusexpr ? subvals[1] + subvals[3] :
+        m.rule == :minusexpr ? subvals[1] - subvals[3] : nothing,
+)</code></pre><p>You should get the expectable result (<code>-581</code>).</p></div><a class="docs-sourcelink" target="_blank" href="https://github.com/LCSB-BioCore/PikaParser.jl/blob/6fd81f68fae2a22dc6eb2d46c38371e8288891f7/src/PikaParser.jl#L1">source</a></section></article></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="json/">Example: Parsing JSON »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Monday 4 July 2022 11:17">Monday 4 July 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

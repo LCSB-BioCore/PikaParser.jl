@@ -22,26 +22,26 @@ rules = Dict(
     :inobj =&gt; P.tie(P.seq(P.seq(:pair), P.many(:sepobj =&gt; P.seq(:sep, :pair)))),
     :json =&gt; P.first(:obj, :array, :string, :int, :t, :f, :null),
 );</code></pre><p>To manage the folding easily, we keep the fold functions in a data structure with the same order as <code>rules</code>:</p><pre><code class="language-julia hljs">folds = Dict(
-    :t =&gt; (i, m, s) -&gt; true,
-    :f =&gt; (i, m, s) -&gt; false,
-    :null =&gt; (i, m, s) -&gt; nothing,
-    :int =&gt; (i, m, s) -&gt; parse(Int, String(i[m.pos:m.pos+m.len-1])),
-    :quote =&gt; (i, m, s) -&gt; i[m.pos],
-    :esc =&gt; (i, m, s) -&gt; i[m.pos],
-    :escaped =&gt; (i, m, s) -&gt; s[2],
-    :notescaped =&gt; (i, m, s) -&gt; i[m.pos],
-    :string =&gt; (i, m, s) -&gt; String(Char.(s[2])),
-    :instrings =&gt; (i, m, s) -&gt; s,
-    :array =&gt; (i, m, s) -&gt; isnothing(s[2]) ? [] : s[2],
-    :inarray =&gt; (i, m, s) -&gt; s,
-    :separray =&gt; (i, m, s) -&gt; s[2],
-    :obj =&gt; (i, m, s) -&gt; isnothing(s[2]) ? Dict{String,Any}() : Dict{String,Any}(s[2]),
-    :pair =&gt; (i, m, s) -&gt; (s[1] =&gt; s[3]),
-    :sepobj =&gt; (i, m, s) -&gt; s[2],
-    :inobj =&gt; (i, m, s) -&gt; s,
+    :t =&gt; (v, s) -&gt; true,
+    :f =&gt; (v, s) -&gt; false,
+    :null =&gt; (v, s) -&gt; nothing,
+    :int =&gt; (v, s) -&gt; parse(Int, String(v)),
+    :quote =&gt; (v, s) -&gt; v[1],
+    :esc =&gt; (v, s) -&gt; v[1],
+    :escaped =&gt; (v, s) -&gt; s[2],
+    :notescaped =&gt; (v, s) -&gt; v[1],
+    :string =&gt; (v, s) -&gt; String(Char.(s[2])),
+    :instrings =&gt; (v, s) -&gt; s,
+    :array =&gt; (v, s) -&gt; isnothing(s[2]) ? [] : s[2],
+    :inarray =&gt; (v, s) -&gt; s,
+    :separray =&gt; (v, s) -&gt; s[2],
+    :obj =&gt; (v, s) -&gt; isnothing(s[2]) ? Dict{String,Any}() : Dict{String,Any}(s[2]),
+    :pair =&gt; (v, s) -&gt; (s[1] =&gt; s[3]),
+    :sepobj =&gt; (v, s) -&gt; s[2],
+    :inobj =&gt; (v, s) -&gt; s,
 )
 
-default_fold(i, match, subvals) = isempty(subvals) ? nothing : subvals[1]
+default_fold(v, subvals) = isempty(subvals) ? nothing : subvals[1]
 
 g = P.make_grammar([:json], P.flatten(rules));</code></pre><p>Let&#39;s parse a simple JSONish string that demonstrates most of the rules:</p><pre><code class="language-julia hljs">input = collect(
     &quot;&quot;&quot;{&quot;something&quot;:123,&quot;other&quot;:false,&quot;refs&quot;:[1,2,[],{},true,false,null,[1,2,3,&quot;haha&quot;],{&quot;is\\&quot;Finished\\&quot;&quot;:true}]}&quot;&quot;&quot;,
@@ -50,7 +50,7 @@ g = P.make_grammar([:json], P.flatten(rules));</code></pre><p>Let&#39;s parse a 
 p = P.parse(g, input);</code></pre><p>Let&#39;s build a Julia JSON-like structure:</p><pre><code class="language-julia hljs">result = P.traverse_match(
     p,
     P.find_match_at!(p, :json, 1),
-    fold = (r, m, s) -&gt; get(folds, r, default_fold)(input, m, s),
+    fold = (m, p, s) -&gt; get(folds, m.rule, default_fold)(m.view, s),
 )</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Dict{String, Any} with 3 entries:
   &quot;other&quot;     =&gt; false
   &quot;something&quot; =&gt; 123
@@ -63,4 +63,4 @@ p = P.parse(g, input);</code></pre><p>Let&#39;s build a Julia JSON-like structur
  false
       nothing
       Any[1, 2, 3, &quot;haha&quot;]
-      Dict{String, Any}(&quot;is\&quot;Finished\&quot;&quot; =&gt; true)</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« README</a><a class="docs-footer-nextpage" href="../scheme/">Example: Parsing Scheme »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Sunday 3 July 2022 21:31">Sunday 3 July 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+      Dict{String, Any}(&quot;is\&quot;Finished\&quot;&quot; =&gt; true)</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« README</a><a class="docs-footer-nextpage" href="../scheme/">Example: Parsing Scheme »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Monday 4 July 2022 11:16">Monday 4 July 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
