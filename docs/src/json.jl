@@ -40,26 +40,26 @@ rules = Dict(
 # To manage the folding easily, we keep the fold functions in a data structure
 # with the same order as `rules`:
 folds = Dict(
-    :t => (i, m, s) -> true,
-    :f => (i, m, s) -> false,
-    :null => (i, m, s) -> nothing,
-    :int => (i, m, s) -> parse(Int, String(i[m.pos:m.pos+m.len-1])),
-    :quote => (i, m, s) -> i[m.pos],
-    :esc => (i, m, s) -> i[m.pos],
-    :escaped => (i, m, s) -> s[2],
-    :notescaped => (i, m, s) -> i[m.pos],
-    :string => (i, m, s) -> String(Char.(s[2])),
-    :instrings => (i, m, s) -> s,
-    :array => (i, m, s) -> isnothing(s[2]) ? [] : s[2],
-    :inarray => (i, m, s) -> s,
-    :separray => (i, m, s) -> s[2],
-    :obj => (i, m, s) -> isnothing(s[2]) ? Dict{String,Any}() : Dict{String,Any}(s[2]),
-    :pair => (i, m, s) -> (s[1] => s[3]),
-    :sepobj => (i, m, s) -> s[2],
-    :inobj => (i, m, s) -> s,
+    :t => (v, s) -> true,
+    :f => (v, s) -> false,
+    :null => (v, s) -> nothing,
+    :int => (v, s) -> parse(Int, String(v)),
+    :quote => (v, s) -> v[1],
+    :esc => (v, s) -> v[1],
+    :escaped => (v, s) -> s[2],
+    :notescaped => (v, s) -> v[1],
+    :string => (v, s) -> String(Char.(s[2])),
+    :instrings => (v, s) -> s,
+    :array => (v, s) -> isnothing(s[2]) ? [] : s[2],
+    :inarray => (v, s) -> s,
+    :separray => (v, s) -> s[2],
+    :obj => (v, s) -> isnothing(s[2]) ? Dict{String,Any}() : Dict{String,Any}(s[2]),
+    :pair => (v, s) -> (s[1] => s[3]),
+    :sepobj => (v, s) -> s[2],
+    :inobj => (v, s) -> s,
 )
 
-default_fold(i, match, subvals) = isempty(subvals) ? nothing : subvals[1]
+default_fold(v, subvals) = isempty(subvals) ? nothing : subvals[1]
 
 g = P.make_grammar([:json], P.flatten(rules));
 
@@ -74,7 +74,7 @@ p = P.parse(g, input);
 result = P.traverse_match(
     p,
     P.find_match_at!(p, :json, 1),
-    fold = (r, m, s) -> get(folds, r, default_fold)(input, m, s),
+    fold = (m, p, s) -> get(folds, m.rule, default_fold)(m.view, s),
 )
 
 # Detail:

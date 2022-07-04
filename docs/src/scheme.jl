@@ -65,11 +65,11 @@ top_matches =
 
 # Prepare a folding function:
 
-fold_scheme(r, m, s) =
-    r == :number ? parse(Int, String(P.view_match(p, m))) :
-    r == :ident ? Symbol(String(P.view_match(p, m))) :
-    r == :insexpr ? Expr(:call, :S, s...) :
-    r == :sexpr ? s[2] : r == :top ? s[2] : length(s) > 0 ? s[1] : nothing;
+fold_scheme(m, p, s) =
+    m.rule == :number ? parse(Int, String(m.view)) :
+    m.rule == :ident ? Symbol(String(m.view)) :
+    m.rule == :insexpr ? Expr(:call, :S, s...) :
+    m.rule == :sexpr ? s[2] : m.rule == :top ? s[2] : length(s) > 0 ? s[1] : nothing;
 
 # We can run through all `top` matches, tracking the position where we would
 # expect the next match:

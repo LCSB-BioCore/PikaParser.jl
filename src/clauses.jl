@@ -70,10 +70,6 @@ function seeded_by(x::First{G}, ::Vector{Bool})::Vector{G} where {G}
     child_clauses(x)
 end
 
-function seeded_by(x::NotFollowedBy{G}, ::Vector{Bool})::Vector{G} where {G}
-    child_clauses(x) #TODO is this required?
-end
-
 function seeded_by(x::FollowedBy{G}, ::Vector{Bool})::Vector{G} where {G}
     child_clauses(x)
 end
@@ -104,9 +100,9 @@ can_match_epsilon(x::Fail, ::Vector{Bool}) = false
 can_match_epsilon(x::Seq, ch::Vector{Bool}) = all(ch)
 can_match_epsilon(x::First, ch::Vector{Bool}) =
     isempty(ch) ? false :
-    any(ch[begin:end-1]) ? throw("First with non-terminal epsilon match") : last(ch)
+    any(ch[begin:end-1]) ? error("First with non-terminal epsilon match") : last(ch)
 can_match_epsilon(x::NotFollowedBy, ch::Vector{Bool}) =
-    ch[1] ? throw("NotFollowedBy epsilon match") : true
+    ch[1] ? error("NotFollowedBy epsilon match") : true
 can_match_epsilon(x::FollowedBy, ch::Vector{Bool}) = ch[1]
 can_match_epsilon(x::Some, ch::Vector{Bool}) = ch[1]
 can_match_epsilon(x::Many, ch::Vector{Bool}) = true
@@ -143,10 +139,6 @@ function match_clause!(x::Tokens, id::Int, pos::Int, st::ParserState)::MatchResu
     end
 end
 
-function match_clause!(x::Fail, ::Int, ::Int, ::ParserState)::MatchResult
-    nothing
-end
-
 function match_clause!(x::Seq, id::Int, orig_pos::Int, st::ParserState)::MatchResult
     pos = orig_pos
     seq = Vector{Int}(undef, length(x.children))
@@ -170,15 +162,6 @@ function match_clause!(x::First, id::Int, pos::Int, st::ParserState)::MatchResul
         end
     end
     nothing
-end
-
-function match_clause!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
-    mid = lookup_best_match_id!(MemoKey(x.reserved, pos), st)
-    if isnothing(mid)
-        new_match!(Match(id, pos, 0, 0, []), st)
-    else
-        nothing
-    end
 end
 
 function match_clause!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
@@ -210,14 +193,11 @@ function match_clause!(x::Many, id::Int, pos::Int, st::ParserState)::MatchResult
         return match_epsilon!(x, id, pos, st)
     end
     mid2 = lookup_best_match_id!(MemoKey(id, pos + st.matches[mid1].len), st)
-    if isnothing(mid2)
-        error(AssertionError("Many did not match, but it should have had!"))
-    else
-        new_match!(
-            Match(id, pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
-            st,
-        )
-    end
+    isnothing(mid2) && error("Many did not match, but it should have had!")
+    new_match!(
+        Match(id, pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
+        st,
+    )
 end
 
 function match_clause!(x::Tie, id::Int, pos::Int, st::ParserState)::MatchResult
@@ -230,27 +210,50 @@ end
 
 match_epsilon!(x::Clause, id::Int, pos::Int, st::ParserState) =
     new_match!(Match(id, pos, 0, 0, []), st)
-#TODO this needs a recursion guard!
-match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState) =
-    match_clause!(x, id, pos, st)
+
+function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)
+    # This might technically cause infinite recursion, byt a cycle of
+    # NotFollowedBy clauses is disallowed by the error thrown by
+    # can_match_epsilon(::NotFollowedBy, ...)
+    mid = lookup_best_match_id!(MemoKey(x.reserved, pos), st)
+    if isnothing(mid)
+        new_match!(Match(id, pos, 0, 0, []), st)
+    else
+        nothing
+    end
+end
 
 
 #
 # "User" view of the clauses, for parsetree traversing
 #
 
-function user_view(::Clause, st::ParserState, mid::Int)
+function UserMatch(
+    id::Int,
+    m::Match,
+    submatches::Vector{Int},
+    st::ParserState{G,I},
+) where {G,I}
+    UserMatch{G,eltype(I)}(
+        st.grammar.names[id],
+        m.pos,
+        m.len,
+        view_match(st, m),
+        submatches,
+    )
+end
+
+function user_view(::Clause, id::Int, mid::Int, st::ParserState)
     # generic case
-    m = st.matches[mid]
-    UserMatch(m.pos, m.len, Int[])
+    UserMatch(id, st.matches[mid], Int[], st)
 end
 
-function user_view(x::Union{Seq,First,FollowedBy}, st::ParserState, mid::Int)
+function user_view(x::Union{Seq,First,FollowedBy}, id::Int, mid::Int, st::ParserState)
     m = st.matches[mid]
-    UserMatch(m.pos, m.len, m.submatches)
+    UserMatch(id, m, m.submatches, st)
 end
 
-function user_view(x::Some, st::ParserState, mid::Int)
+function user_view(x::Some, id::Int, mid::Int, st::ParserState)
     len = 1
     m = mid
     while st.matches[m].option_idx == 1
@@ -266,11 +269,10 @@ function user_view(x::Some, st::ParserState, mid::Int)
         m = st.matches[m].submatches[2]
     end
     res[idx] = st.matches[m].submatches[1]
-    m = st.matches[mid]
-    UserMatch(m.pos, m.len, res)
+    UserMatch(id, st.matches[mid], res, st)
 end
 
-function user_view(x::Many, st::ParserState, mid::Int)
+function user_view(x::Many, id::Int, mid::Int, st::ParserState)
     len = 0
     m = mid
     while st.matches[m].option_idx == 1
@@ -285,27 +287,26 @@ function user_view(x::Many, st::ParserState, mid::Int)
         idx += 1
         m = st.matches[m].submatches[2]
     end
-    m = st.matches[mid]
-    UserMatch(m.pos, m.len, res)
+    UserMatch(id, st.matches[mid], res, st)
 end
 
-function user_view(x::Tie, st::ParserState, mid::Int)
+function user_view(x::Tie, id::Int, mid::Int, st::ParserState)
     m = st.matches[mid]
     if m.option_idx == 0
         # epsilon match
-        return UserMatch(m.pos, m.len, [])
+        return UserMatch(id, m.pos, m.len, [], st)
     end
 
     tmid = m.submatches[1]
     tm = st.matches[tmid]
 
     ccmids = Int[]
-    for cmid in user_view(st.grammar.clauses[tm.clause], st, tmid).submatches
-        for ccmid in
-            user_view(st.grammar.clauses[st.matches[cmid].clause], st, cmid).submatches
+    for cmid in user_view(st.grammar.clauses[tm.clause], tm.clause, tmid, st).submatches
+        cl = st.matches[cmid].clause
+        for ccmid in user_view(st.grammar.clauses[cl], cl, cmid, st).submatches
             push!(ccmids, ccmid)
         end
     end
 
-    UserMatch(m.pos, m.len, ccmids)
+    UserMatch(id, m, ccmids, st)
 end
