@@ -70,10 +70,6 @@ function seeded_by(x::First{G}, ::Vector{Bool})::Vector{G} where {G}
     child_clauses(x)
 end
 
-function seeded_by(x::NotFollowedBy{G}, ::Vector{Bool})::Vector{G} where {G}
-    child_clauses(x) #TODO is this required?
-end
-
 function seeded_by(x::FollowedBy{G}, ::Vector{Bool})::Vector{G} where {G}
     child_clauses(x)
 end
@@ -104,9 +100,9 @@ can_match_epsilon(x::Fail, ::Vector{Bool}) = false
 can_match_epsilon(x::Seq, ch::Vector{Bool}) = all(ch)
 can_match_epsilon(x::First, ch::Vector{Bool}) =
     isempty(ch) ? false :
-    any(ch[begin:end-1]) ? throw("First with non-terminal epsilon match") : last(ch)
+    any(ch[begin:end-1]) ? error("First with non-terminal epsilon match") : last(ch)
 can_match_epsilon(x::NotFollowedBy, ch::Vector{Bool}) =
-    ch[1] ? throw("NotFollowedBy epsilon match") : true
+    ch[1] ? error("NotFollowedBy epsilon match") : true
 can_match_epsilon(x::FollowedBy, ch::Vector{Bool}) = ch[1]
 can_match_epsilon(x::Some, ch::Vector{Bool}) = ch[1]
 can_match_epsilon(x::Many, ch::Vector{Bool}) = true
@@ -206,14 +202,11 @@ function match_clause!(x::Many, id::Int, pos::Int, st::ParserState)::MatchResult
         return match_epsilon!(x, id, pos, st)
     end
     mid2 = lookup_best_match_id!(MemoKey(id, pos + st.matches[mid1].len), st)
-    if isnothing(mid2)
-        error(AssertionError("Many did not match, but it should have had!"))
-    else
-        new_match!(
-            Match(id, pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
-            st,
-        )
-    end
+    isnothing(mid2) && error("Many did not match, but it should have had!")
+    new_match!(
+        Match(id, pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
+        st,
+    )
 end
 
 function match_clause!(x::Tie, id::Int, pos::Int, st::ParserState)::MatchResult
