@@ -9,8 +9,10 @@
 # - building native Julia data objects using a dictionary of handlers
 #
 # The simplifications that we choose not to handle are the following:
-# - we do not support whitespace between tokens
-# - for obvious reasons, we do not consider full floating point number support
+# - we do not support space between tokens (you can pipe your json through
+#   `jq -c .`
+#   to remove unnecessary spaces)
+# - support for numbers is very ad-hoc, `Float64`-only
 # - the escape sequences allowed in strings are rather incomplete
 
 import PikaParser as P
@@ -19,8 +21,12 @@ rules = Dict(
     :t => P.tokens(collect("true")),
     :f => P.tokens(collect("false")),
     :null => P.tokens(collect("null")),
-    :int => P.some(:digit),
     :digit => P.satisfy(isdigit),
+    :number => P.seq(
+        P.first(P.token('-'), P.epsilon),
+        P.some(:digit),
+        P.first(P.seq(P.token('.'), P.many(:digit)), P.epsilon),
+    ),
     :quote => P.token('"'),
     :esc => P.token('\\'),
     :string => P.seq(:quote, :instrings => P.many(:instring), :quote),
@@ -34,7 +40,7 @@ rules = Dict(
     :obj => P.seq(P.token('{'), P.first(:inobj, P.epsilon), P.token('}')),
     :pair => P.seq(:string, P.token(':'), :json),
     :inobj => P.tie(P.seq(P.seq(:pair), P.many(:sepobj => P.seq(:sep, :pair)))),
-    :json => P.first(:obj, :array, :string, :int, :t, :f, :null),
+    :json => P.first(:obj, :array, :string, :number, :t, :f, :null),
 );
 
 # To manage the folding easily, we keep the fold functions in a data structure
@@ -43,17 +49,17 @@ folds = Dict(
     :t => (v, s) -> true,
     :f => (v, s) -> false,
     :null => (v, s) -> nothing,
-    :int => (v, s) -> parse(Int, String(v)),
+    :number => (v, s) -> parse(Float64, String(v)),
     :quote => (v, s) -> v[1],
     :esc => (v, s) -> v[1],
     :escaped => (v, s) -> s[2],
     :notescaped => (v, s) -> v[1],
-    :string => (v, s) -> String(Char.(s[2])),
+    :string => (v, s) -> String(Vector{Char}(s[2])),
     :instrings => (v, s) -> s,
-    :array => (v, s) -> isnothing(s[2]) ? [] : s[2],
+    :array => (v, s) -> s[2],
     :inarray => (v, s) -> s,
     :separray => (v, s) -> s[2],
-    :obj => (v, s) -> isnothing(s[2]) ? Dict{String,Any}() : Dict{String,Any}(s[2]),
+    :obj => (v, s) -> Dict{String,Any}(isnothing(s[2]) ? [] : s[2]),
     :pair => (v, s) -> (s[1] => s[3]),
     :sepobj => (v, s) -> s[2],
     :inobj => (v, s) -> s,
@@ -65,7 +71,7 @@ g = P.make_grammar([:json], P.flatten(rules));
 
 # Let's parse a simple JSONish string that demonstrates most of the rules:
 input = collect(
-    """{"something":123,"other":false,"refs":[1,2,[],{},true,false,null,[1,2,3,"haha"],{"is\\"Finished\\"":true}]}""",
+    """{"something":123,"other":false,"refs":[1,-2.345,[],{},true,false,null,[1,2,3,"haha"],{"is\\"Finished\\"":true}]}""",
 );
 
 p = P.parse(g, input);
