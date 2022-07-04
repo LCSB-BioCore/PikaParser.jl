@@ -17,7 +17,7 @@
         mid,
         fold = (rule, match, subvals) ->
             rule == :digits ?
-            parse(Int, String(input[match.pos:match.pos+match.len-1])) :
+            parse(Int, String(P.view_match(p, match))) :
             rule == :seq ? [subvals[1], subvals[2]...] :
             rule == :cont ? subvals[2] : subvals,
     )
