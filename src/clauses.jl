@@ -143,10 +143,6 @@ function match_clause!(x::Tokens, id::Int, pos::Int, st::ParserState)::MatchResu
     end
 end
 
-function match_clause!(x::Fail, ::Int, ::Int, ::ParserState)::MatchResult
-    nothing
-end
-
 function match_clause!(x::Seq, id::Int, orig_pos::Int, st::ParserState)::MatchResult
     pos = orig_pos
     seq = Vector{Int}(undef, length(x.children))
