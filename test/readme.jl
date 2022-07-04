@@ -57,25 +57,25 @@
     x = P.traverse_match(p, P.find_match_at!(p, :expr, 1))
     @test x == :(expr(
         minusexpr(
-            expr(digits(digit(), digit())),
-            var"minusexpr-2"(),
+            expr(digits(digit('1'), digit('2'))),
+            var"minusexpr-2"('-'),
             expr(
                 parens(
-                    var"parens-1"(),
+                    var"parens-1"('('),
                     expr(
                         plusexpr(
-                            expr(digits(digit(), digit())),
-                            var"plusexpr-2"(),
+                            expr(digits(digit('3'), digit('4'))),
+                            var"plusexpr-2"('+'),
                             expr(
                                 minusexpr(
-                                    expr(digits(digit(), digit(), digit())),
-                                    var"minusexpr-2"(),
-                                    expr(digits(digit())),
+                                    expr(digits(digit('5'), digit('6'), digit('7'))),
+                                    var"minusexpr-2"('-'),
+                                    expr(digits(digit('8'))),
                                 ),
                             ),
                         ),
                     ),
-                    var"parens-3"(),
+                    var"parens-3"(')'),
                 ),
             ),
         ),
@@ -84,12 +84,12 @@
     res = P.traverse_match(
         p,
         P.find_match_at!(p, :expr, 1),
-        fold = (rule, match, subvals) ->
-            rule == :digits ? parse(Int, String(P.view_match(p, match))) :
-            rule == :expr ? subvals[1] :
-            rule == :parens ? subvals[2] :
-            rule == :plusexpr ? subvals[1] + subvals[3] :
-            rule == :minusexpr ? subvals[1] - subvals[3] : nothing,
+        fold = (m, p, subvals) ->
+            m.rule == :digits ? parse(Int, String(m.view)) :
+            m.rule == :expr ? subvals[1] :
+            m.rule == :parens ? subvals[2] :
+            m.rule == :plusexpr ? subvals[1] + subvals[3] :
+            m.rule == :minusexpr ? subvals[1] - subvals[3] : nothing,
     )
 
     @test res == eval(Meta.parse(input_str))

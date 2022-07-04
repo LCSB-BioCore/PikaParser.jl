@@ -18,7 +18,7 @@
     @test P.traverse_match(
         p,
         m,
-        fold = (rule, match, subvals) -> Expr(:call, Symbol(rule), subvals...),
+        fold = (m, p, subvals) -> Expr(:call, Symbol(m.rule), subvals...),
     ) == :(seq(
         seq_1(a(a_1(), a_2(), a_3())),
         seq_1(b(b_1(), b_2(b_2_1()))),
@@ -76,10 +76,10 @@ end
     @test !isnothing(mid)
     @test p.matches[mid].len == length(input)
     @test P.traverse_match(p, mid) == :(list(
-        digit(),
-        sepdigit(sep(), digit()),
-        sepdigit(sep(), digit()),
-        sepdigit(sep(), digit()),
-        sepdigit(sep(), digit()),
+        digit('1'),
+        sepdigit(sep(','), digit('2')),
+        sepdigit(sep(','), digit('3')),
+        sepdigit(sep(','), digit('4')),
+        sepdigit(sep(','), digit('5')),
     ))
 end

@@ -239,18 +239,32 @@ match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState) =
 # "User" view of the clauses, for parsetree traversing
 #
 
-function user_view(::Clause, st::ParserState, mid::Int)
+function UserMatch(
+    id::Int,
+    m::Match,
+    submatches::Vector{Int},
+    st::ParserState{G,I},
+) where {G,I}
+    UserMatch{G,eltype(I)}(
+        st.grammar.names[id],
+        m.pos,
+        m.len,
+        view_match(st, m),
+        submatches,
+    )
+end
+
+function user_view(::Clause, id::Int, mid::Int, st::ParserState)
     # generic case
-    m = st.matches[mid]
-    UserMatch(m.pos, m.len, Int[])
+    UserMatch(id, st.matches[mid], Int[], st)
 end
 
-function user_view(x::Union{Seq,First,FollowedBy}, st::ParserState, mid::Int)
+function user_view(x::Union{Seq,First,FollowedBy}, id::Int, mid::Int, st::ParserState)
     m = st.matches[mid]
-    UserMatch(m.pos, m.len, m.submatches)
+    UserMatch(id, m, m.submatches, st)
 end
 
-function user_view(x::Some, st::ParserState, mid::Int)
+function user_view(x::Some, id::Int, mid::Int, st::ParserState)
     len = 1
     m = mid
     while st.matches[m].option_idx == 1
@@ -266,11 +280,10 @@ function user_view(x::Some, st::ParserState, mid::Int)
         m = st.matches[m].submatches[2]
     end
     res[idx] = st.matches[m].submatches[1]
-    m = st.matches[mid]
-    UserMatch(m.pos, m.len, res)
+    UserMatch(id, st.matches[mid], res, st)
 end
 
-function user_view(x::Many, st::ParserState, mid::Int)
+function user_view(x::Many, id::Int, mid::Int, st::ParserState)
     len = 0
     m = mid
     while st.matches[m].option_idx == 1
@@ -285,27 +298,26 @@ function user_view(x::Many, st::ParserState, mid::Int)
         idx += 1
         m = st.matches[m].submatches[2]
     end
-    m = st.matches[mid]
-    UserMatch(m.pos, m.len, res)
+    UserMatch(id, st.matches[mid], res, st)
 end
 
-function user_view(x::Tie, st::ParserState, mid::Int)
+function user_view(x::Tie, id::Int, mid::Int, st::ParserState)
     m = st.matches[mid]
     if m.option_idx == 0
         # epsilon match
-        return UserMatch(m.pos, m.len, [])
+        return UserMatch(id, m.pos, m.len, [], st)
     end
 
     tmid = m.submatches[1]
     tm = st.matches[tmid]
 
     ccmids = Int[]
-    for cmid in user_view(st.grammar.clauses[tm.clause], st, tmid).submatches
-        for ccmid in
-            user_view(st.grammar.clauses[st.matches[cmid].clause], st, cmid).submatches
+    for cmid in user_view(st.grammar.clauses[tm.clause], tm.clause, tmid, st).submatches
+        cl = st.matches[cmid].clause
+        for ccmid in user_view(st.grammar.clauses[cl], cl, cmid, st).submatches
             push!(ccmids, ccmid)
         end
     end
 
-    UserMatch(m.pos, m.len, ccmids)
+    UserMatch(id, m, ccmids, st)
 end

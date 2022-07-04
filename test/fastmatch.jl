@@ -15,11 +15,9 @@
     x = P.traverse_match(
         p,
         mid,
-        fold = (rule, match, subvals) ->
-            rule == :digits ?
-            parse(Int, String(P.view_match(p, match))) :
-            rule == :seq ? [subvals[1], subvals[2]...] :
-            rule == :cont ? subvals[2] : subvals,
+        fold = (m, p, s) ->
+            m.rule == :digits ? parse(Int, String(m.view)) :
+            m.rule == :seq ? [s[1], s[2]...] : m.rule == :cont ? s[2] : s,
     )
     @test x == [123, 234, 345]
 end

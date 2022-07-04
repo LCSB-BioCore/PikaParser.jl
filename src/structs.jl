@@ -271,12 +271,18 @@ User-facing representation of a [`Match`](@ref).
 # Fields
 $(TYPEDFIELDS)
 """
-struct UserMatch
+struct UserMatch{G,T}
+    "Which rule ID has matched here?"
+    rule::G
+
     "Where the match started?"
     pos::Int
 
     "How long is the match?"
     len::Int
+
+    "View of the matched part of the input vector."
+    view::SubArray{T}
 
     "Indexes and rule labels of the matched submatches. This forms the edges in the match tree."
     submatches::Vector{Int}
@@ -322,8 +328,8 @@ end
 """
 $(TYPEDEF)
 
-A shortcut for possibly failed match result index (that points into
-[`ParserState`](@ref) field `matches`.
+A match index in [`ParserState`](@ref) field `matches`, or `nothing` if the
+match failed.
 """
 const MatchResult = Maybe{Int}
 
@@ -335,11 +341,10 @@ Part of intermediate tree traversing state.
 # Fields
 $(TYPEDFIELDS)
 """
-mutable struct TraverseNode{G}
+mutable struct TraverseNode{G,T}
     parent_idx::Int
     parent_sub_idx::Int
-    rule::G
-    match::UserMatch
+    match::UserMatch{G,T}
     open::Bool
     subvals::Vector
 end
