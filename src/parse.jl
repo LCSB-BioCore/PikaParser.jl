@@ -1,10 +1,11 @@
 
-function lookup_best_match_id!(k::MemoKey, st::ParserState)::MatchResult
-    mid = get(st.memo, k, nothing)
+function lookup_best_match_id!(pos::Int, clause::Int, st::ParserState)::MatchResult
+    pos <= length(st.memo) || return nothing
+    mid = get(st.memo[pos], clause, nothing)
     isnothing(mid) || return mid
 
-    if st.grammar.can_match_epsilon[k.clause]
-        return match_epsilon!(st.grammar.clauses[k.clause], k.clause, k.pos, st)
+    if st.grammar.can_match_epsilon[clause]
+        return match_epsilon!(st.grammar.clauses[clause], clause, pos, st)
     end
 
     return nothing
@@ -15,20 +16,20 @@ function new_match!(match::Match, st::ParserState)::Int
     return length(st.matches)
 end
 
-function add_match!(k::MemoKey, match::MatchResult, st::ParserState)
+function add_match!(pos::Int, clause::Int, match::MatchResult, st::ParserState)
     updated = false
     if !isnothing(match)
-        old = get(st.memo, k, nothing)
+        old = get(st.memo[pos], clause, nothing)
         if isnothing(old) || better_match_than(
-            st.grammar.clauses[k.clause],
+            st.grammar.clauses[clause],
             st.matches[match],
             st.matches[old],
         )
-            st.memo[k] = match
+            st.memo[pos][clause] = match
             updated = true
         end
     end
-    for seed in st.grammar.seed_clauses[k.clause]
+    for seed in st.grammar.seed_clauses[clause]
         if updated || st.grammar.can_match_epsilon[seed]
             push!(st.q, seed)
         end
@@ -60,8 +61,7 @@ matching all terminal types at each position.
 
 # Results
 
-Use [`find_first_parse_at`](@ref) or [`find_match_at!`](@ref) to extract matches
-from [`ParserState`](@ref).
+Use [`find_match_at!`](@ref) to extract matches from [`ParserState`](@ref).
 
 Pika parsing never really fails. Instead, in case when the grammar rule is not
 matched in the input, the expected rule match match is either not going to be
@@ -81,25 +81,33 @@ function parse(
     input::I,
     fast_match = nothing,
 )::ParserState{G,I} where {G,I<:AbstractVector}
-    st = ParserState(grammar, MemoTable(), PikaQueue(), Match[], input)
-    sizehint!(st.matches, length(input)) # hopefully avoids a painful part of the overhead
+    st = ParserState(
+        grammar,
+        [Dict{Int,Int}() for _ in 1:1+length(input)],
+        PikaQueue(length(grammar.clauses)),
+        Match[],
+        input,
+    )
+
+    terminal_q = PikaQueue(length(grammar.clauses))
+    reset!(terminal_q, grammar.terminals)
 
     for i in reverse(eachindex(input))
         if isnothing(fast_match)
-            push!(st.q, grammar.terminals...)
+            reset!(st.q, terminal_q)
         else
             fast_match(
                 input,
                 i,
                 (rid, len) -> let cl = grammar.idx[rid]
-                    add_match!(MemoKey(cl, i), new_match!(Match(cl, i, len, 0, []), st), st)
+                    add_match!(i, cl, new_match!(Match(cl, i, len, 0, []), st), st)
                 end,
             )
         end
         while !isempty(st.q)
             clause = pop!(st.q)
             match = match_clause!(grammar.clauses[clause], clause, i, st)
-            add_match!(MemoKey(clause, i), match, st)
+            add_match!(i, clause, match, st)
         end
     end
 

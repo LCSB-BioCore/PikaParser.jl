@@ -212,31 +212,16 @@ struct Grammar{G}
     "Which clauses get seeded upon matching of a clause"
     seed_clauses::Vector{Vector{Int}}
 
-    "A summarized list of grammar terminals that are checked against each input letter"
+    "Sorted indexes of terminal clauses that are checked against each input item."
     terminals::Vector{Int}
 end
 
 """
 $(TYPEDEF)
 
-Index into the memoization table.
-
-# Fields
-$(TYPEDFIELDS)
+Pikaparser memoization table. Dictionaries are expectably tiny.
 """
-struct MemoKey
-    clause::Int
-    pos::Int
-end
-
-@inline Base.isless(a::MemoKey, b::MemoKey) = isless((a.pos, -a.clause), (b.pos, -b.clause))
-
-"""
-$(TYPEDEF)
-
-Pikaparser memoization table.
-"""
-const MemoTable = SortedDict{MemoKey,Int}
+const MemoTable = Vector{Dict{Int,Int}}
 
 """
 $(TYPEDEF)
@@ -294,7 +279,11 @@ end
 
 const Maybe{X} = Union{Nothing,X}
 
-const PikaQueue = SortedSet{Int}
+mutable struct PikaQueue
+    n::UInt
+    q::Vector{UInt}
+    p::Vector{Bool}
+end
 
 """
 $(TYPEDEF)

@@ -143,7 +143,7 @@ function match_clause!(x::Seq, id::Int, orig_pos::Int, st::ParserState)::MatchRe
     pos = orig_pos
     seq = Vector{Int}(undef, length(x.children))
     for (i, c) in enumerate(x.children)
-        mid = lookup_best_match_id!(MemoKey(c, pos), st)
+        mid = lookup_best_match_id!(pos, c, st)
         if isnothing(mid)
             return nothing
         end
@@ -156,7 +156,7 @@ end
 
 function match_clause!(x::First, id::Int, pos::Int, st::ParserState)::MatchResult
     for (i, c) in enumerate(x.children)
-        mid = lookup_best_match_id!(MemoKey(c, pos), st)
+        mid = lookup_best_match_id!(pos, c, st)
         if !isnothing(mid)
             return new_match!(Match(id, pos, st.matches[mid].len, i, [mid]), st)
         end
@@ -165,7 +165,7 @@ function match_clause!(x::First, id::Int, pos::Int, st::ParserState)::MatchResul
 end
 
 function match_clause!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
-    mid = lookup_best_match_id!(MemoKey(x.follow, pos), st)
+    mid = lookup_best_match_id!(pos, x.follow, st)
     if isnothing(mid)
         nothing
     else
@@ -174,9 +174,9 @@ function match_clause!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::Match
 end
 
 function match_clause!(x::Some, id::Int, pos::Int, st::ParserState)::MatchResult
-    mid1 = lookup_best_match_id!(MemoKey(x.item, pos), st)
+    mid1 = lookup_best_match_id!(pos, x.item, st)
     isnothing(mid1) && return nothing
-    mid2 = lookup_best_match_id!(MemoKey(id, pos + st.matches[mid1].len), st)
+    mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
     if isnothing(mid2)
         new_match!(Match(id, pos, st.matches[mid1].len, 0, [mid1]), st)
     else
@@ -188,11 +188,11 @@ function match_clause!(x::Some, id::Int, pos::Int, st::ParserState)::MatchResult
 end
 
 function match_clause!(x::Many, id::Int, pos::Int, st::ParserState)::MatchResult
-    mid1 = lookup_best_match_id!(MemoKey(x.item, pos), st)
+    mid1 = lookup_best_match_id!(pos, x.item, st)
     if isnothing(mid1)
         return match_epsilon!(x, id, pos, st)
     end
-    mid2 = lookup_best_match_id!(MemoKey(id, pos + st.matches[mid1].len), st)
+    mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
     isnothing(mid2) && error("Many did not match, but it should have had!")
     new_match!(
         Match(id, pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
@@ -201,7 +201,7 @@ function match_clause!(x::Many, id::Int, pos::Int, st::ParserState)::MatchResult
 end
 
 function match_clause!(x::Tie, id::Int, pos::Int, st::ParserState)::MatchResult
-    mid = lookup_best_match_id!(MemoKey(x.tuple, pos), st)
+    mid = lookup_best_match_id!(pos, x.tuple, st)
     isnothing(mid) && return nothing
     new_match!(Match(id, pos, st.matches[mid].len, 1, [mid]), st)
 end
@@ -215,7 +215,7 @@ function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)
     # This might technically cause infinite recursion, byt a cycle of
     # NotFollowedBy clauses is disallowed by the error thrown by
     # can_match_epsilon(::NotFollowedBy, ...)
-    mid = lookup_best_match_id!(MemoKey(x.reserved, pos), st)
+    mid = lookup_best_match_id!(pos, x.reserved, st)
     if isnothing(mid)
         new_match!(Match(id, pos, 0, 0, []), st)
     else

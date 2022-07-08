@@ -41,14 +41,9 @@
     input = collect(input_str)
     p = P.parse(g, input)
 
-    mid1, rule = P.find_first_parse_at(p, 1)
-    @test p.matches[mid1].pos == 1
-    @test rule == :expr
-
     mid = P.find_match_at!(p, :expr, 1)
-
     @test !isnothing(mid)
-    @test mid == mid1
+    @test p.matches[mid].pos == 1
     @test P.view_match(p, mid) == input
 
     m = p.matches[P.find_match_at!(p, :expr, 1)]

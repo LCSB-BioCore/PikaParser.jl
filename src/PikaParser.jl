@@ -12,5 +12,6 @@ include("frontend.jl")
 include("grammar.jl")
 include("parse.jl")
 include("traverse.jl")
+include("q.jl")
 
 end # module
