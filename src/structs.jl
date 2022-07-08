@@ -219,19 +219,12 @@ end
 """
 $(TYPEDEF)
 
-Pikaparser memoization table. Dictionaries are expectably tiny.
-"""
-const MemoTable = Vector{Dict{Int,Int}}
-
-"""
-$(TYPEDEF)
-
 Internal match representation.
 
 # Fields
 $(TYPEDFIELDS)
 """
-struct Match
+mutable struct Match
     "Which clause has matched here?"
     clause::Int
 
@@ -244,9 +237,20 @@ struct Match
     "Which possibility (given by the clause) did we match?"
     option_idx::Int
 
-    "Indexes to the vector of matches. This forms the edges in the match tree."
-    submatches::Vector{Int}
+    "Index to the first submatch, the range of submatches spans all the way to the first submatch of the next Match."
+    submatches::Int
+
+    "Left child in the memo tree."
+    left::Int
+
+    "Right child in the memo tree."
+    right::Int
+
+    "Parent in the memo tree."
+    parent::Int
 end
+
+Match(c, p, l, o, s) = Match(c, p, l, o, s, 0, 0, 0)
 
 """
 $(TYPEDEF)
@@ -301,16 +305,19 @@ mutable struct ParserState{G,I}
     "Copy of the grammar used to parse the input."
     grammar::Grammar{G}
 
-    "Best matches of grammar rules for each position of the input"
-    memo::MemoTable
-
     "Queue for rules that should match, used only internally."
     q::PikaQueue
 
-    "Match tree (folded into a vector)"
+    "Matches, connected by indexes to form a memo table search tree."
     matches::Vector{Match}
 
-    "Parser input, can be used to reconstruct match data."
+    "Root of the memotable search tree (stored in the `matches`)."
+    memo_root::Int
+
+    "Children pointers of the matches that form the match tree."
+    submatches::Vector{Int}
+
+    "Parser input, used to reconstruct match data."
     input::I
 end
 

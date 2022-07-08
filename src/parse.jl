@@ -1,7 +1,6 @@
 
 function lookup_best_match_id!(pos::Int, clause::Int, st::ParserState)::MatchResult
-    pos <= length(st.memo) || return nothing
-    mid = get(st.memo[pos], clause, nothing)
+    mid = match_find!(st, clause, pos)
     isnothing(mid) || return mid
 
     if st.grammar.can_match_epsilon[clause]
@@ -19,13 +18,10 @@ end
 function add_match!(pos::Int, clause::Int, match::MatchResult, st::ParserState)
     updated = false
     if !isnothing(match)
-        old = get(st.memo[pos], clause, nothing)
-        if isnothing(old) || better_match_than(
-            st.grammar.clauses[clause],
-            st.matches[match],
-            st.matches[old],
-        )
-            st.memo[pos][clause] = match
+        old = match_find!(st, clause, pos)
+        if isnothing(old) ||
+           better_match_than(st.grammar.clauses[clause], st.matches[match], st.matches[old])
+            match_insert!(st, match)
             updated = true
         end
     end
@@ -81,14 +77,9 @@ function parse(
     input::I,
     fast_match = nothing,
 )::ParserState{G,I} where {G,I<:AbstractVector}
-    st = ParserState(
-        grammar,
-        [Dict{Int,Int}() for _ in 1:1+length(input)],
-        PikaQueue(length(grammar.clauses)),
-        Match[],
-        input,
-    )
+    st = ParserState(grammar, PikaQueue(length(grammar.clauses)), Match[], 0, Int[], input)
 
+    # a queue pre-filled with terminal matches (used so that we don't need to refill it manually everytime)
     terminal_q = PikaQueue(length(grammar.clauses))
     reset!(terminal_q, grammar.terminals)
 
@@ -100,7 +91,12 @@ function parse(
                 input,
                 i,
                 (rid, len) -> let cl = grammar.idx[rid]
-                    add_match!(i, cl, new_match!(Match(cl, i, len, 0, []), st), st)
+                    add_match!(
+                        i,
+                        cl,
+                        new_match!(Match(cl, i, len, 0, submatch_empty(st)), st),
+                        st,
+                    )
                 end,
             )
         end
