@@ -212,31 +212,9 @@ struct Grammar{G}
     "Which clauses get seeded upon matching of a clause"
     seed_clauses::Vector{Vector{Int}}
 
-    "A summarized list of grammar terminals that are checked against each input letter"
+    "Sorted indexes of terminal clauses that are checked against each input item."
     terminals::Vector{Int}
 end
-
-"""
-$(TYPEDEF)
-
-Index into the memoization table.
-
-# Fields
-$(TYPEDFIELDS)
-"""
-struct MemoKey
-    clause::Int
-    pos::Int
-end
-
-@inline Base.isless(a::MemoKey, b::MemoKey) = isless((a.pos, -a.clause), (b.pos, -b.clause))
-
-"""
-$(TYPEDEF)
-
-Pikaparser memoization table.
-"""
-const MemoTable = SortedDict{MemoKey,Int}
 
 """
 $(TYPEDEF)
@@ -246,7 +224,7 @@ Internal match representation.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Match
+mutable struct Match
     "Which clause has matched here?"
     clause::Int
 
@@ -259,9 +237,20 @@ struct Match
     "Which possibility (given by the clause) did we match?"
     option_idx::Int
 
-    "Indexes to the vector of matches. This forms the edges in the match tree."
-    submatches::Vector{Int}
+    "Index to the first submatch, the range of submatches spans all the way to the first submatch of the next Match."
+    submatches::Int
+
+    "Left child in the memo tree."
+    left::Int
+
+    "Right child in the memo tree."
+    right::Int
+
+    "Parent in the memo tree."
+    parent::Int
 end
+
+Match(c, p, l, o, s) = Match(c, p, l, o, s, 0, 0, 0)
 
 """
 $(TYPEDEF)
@@ -294,7 +283,11 @@ end
 
 const Maybe{X} = Union{Nothing,X}
 
-const PikaQueue = SortedSet{Int}
+mutable struct PikaQueue
+    n::UInt
+    q::Vector{UInt}
+    p::Vector{Bool}
+end
 
 """
 $(TYPEDEF)
@@ -312,16 +305,19 @@ mutable struct ParserState{G,I}
     "Copy of the grammar used to parse the input."
     grammar::Grammar{G}
 
-    "Best matches of grammar rules for each position of the input"
-    memo::MemoTable
-
     "Queue for rules that should match, used only internally."
     q::PikaQueue
 
-    "Match tree (folded into a vector)"
+    "Matches, connected by indexes to form a memo table search tree."
     matches::Vector{Match}
 
-    "Parser input, can be used to reconstruct match data."
+    "Root of the memotable search tree (stored in the `matches`)."
+    memo_root::Int
+
+    "Children pointers of the matches that form the match tree."
+    submatches::Vector{Int}
+
+    "Parser input, used to reconstruct match data."
     input::I
 end
 

@@ -68,7 +68,7 @@ function make_grammar(
         end
     end
     parent_clauses = collect.(parent_clauses)
-    q = PikaQueue(eachindex(clauses))
+    q = full_queue(length(clauses))
 
     while !isempty(q)
         cur = pop!(q)

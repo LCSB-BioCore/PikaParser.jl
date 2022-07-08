@@ -115,40 +115,46 @@ can_match_epsilon(x::Tie, ch::Vector{Bool}) = ch[1]
 
 function match_clause!(x::Satisfy, id::Int, pos::Int, st::ParserState)::MatchResult
     if x.match(st.input[pos])
-        new_match!(Match(id, pos, 1, 0, []), st)
+        new_match!(Match(id, pos, 1, 0, submatch_empty(st)), st)
     end
 end
 
 function match_clause!(x::Scan, id::Int, pos::Int, st::ParserState)::MatchResult
     match_len = x.match(view(st.input, pos:length(st.input)))
     if !isnothing(match_len)
-        new_match!(Match(id, pos, match_len, 0, []), st)
+        new_match!(Match(id, pos, match_len, 0, submatch_empty(st)), st)
     end
 end
 
 function match_clause!(x::Token, id::Int, pos::Int, st::ParserState)::MatchResult
     if st.input[pos] == x.token
-        new_match!(Match(id, pos, 1, 0, []), st)
+        new_match!(Match(id, pos, 1, 0, submatch_empty(st)), st)
     end
 end
 
 function match_clause!(x::Tokens, id::Int, pos::Int, st::ParserState)::MatchResult
     len = length(x.tokens)
     if pos - 1 + len <= length(st.input) && st.input[pos:pos-1+len] == x.tokens
-        new_match!(Match(id, pos, len, 0, []), st)
+        new_match!(Match(id, pos, len, 0, submatch_empty(st)), st)
     end
 end
 
 function match_clause!(x::Seq, id::Int, orig_pos::Int, st::ParserState)::MatchResult
-    pos = orig_pos
-    seq = Vector{Int}(undef, length(x.children))
-    for (i, c) in enumerate(x.children)
-        mid = lookup_best_match_id!(MemoKey(c, pos), st)
-        if isnothing(mid)
-            return nothing
-        end
 
-        seq[i] = mid
+    # check first
+    pos = orig_pos
+    for c in x.children
+        mid = lookup_best_match_id!(pos, c, st)
+        isnothing(mid) && return nothing
+        pos += st.matches[mid].len
+    end
+
+    # allocate submatches
+    pos = orig_pos
+    seq = submatch_start(st)
+    for c in x.children
+        mid = lookup_best_match_id!(pos, c, st)
+        submatch_record!(st, mid)
         pos += st.matches[mid].len
     end
     new_match!(Match(id, orig_pos, pos - orig_pos, 0, seq), st)
@@ -156,68 +162,83 @@ end
 
 function match_clause!(x::First, id::Int, pos::Int, st::ParserState)::MatchResult
     for (i, c) in enumerate(x.children)
-        mid = lookup_best_match_id!(MemoKey(c, pos), st)
+        mid = lookup_best_match_id!(pos, c, st)
         if !isnothing(mid)
-            return new_match!(Match(id, pos, st.matches[mid].len, i, [mid]), st)
+            return new_match!(
+                Match(id, pos, st.matches[mid].len, i, submatch_record!(st, mid)),
+                st,
+            )
         end
     end
     nothing
 end
 
 function match_clause!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
-    mid = lookup_best_match_id!(MemoKey(x.follow, pos), st)
+    mid = lookup_best_match_id!(pos, x.follow, st)
     if isnothing(mid)
         nothing
     else
-        new_match!(Match(id, pos, 0, 1, [mid]), st)
+        new_match!(Match(id, pos, 0, 1, submatch_record!(st, mid)), st)
     end
 end
 
 function match_clause!(x::Some, id::Int, pos::Int, st::ParserState)::MatchResult
-    mid1 = lookup_best_match_id!(MemoKey(x.item, pos), st)
+    mid1 = lookup_best_match_id!(pos, x.item, st)
     isnothing(mid1) && return nothing
-    mid2 = lookup_best_match_id!(MemoKey(id, pos + st.matches[mid1].len), st)
+    mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
     if isnothing(mid2)
-        new_match!(Match(id, pos, st.matches[mid1].len, 0, [mid1]), st)
+        new_match!(Match(id, pos, st.matches[mid1].len, 0, submatch_record!(st, mid1)), st)
     else
         new_match!(
-            Match(id, pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
+            Match(
+                id,
+                pos,
+                st.matches[mid1].len + st.matches[mid2].len,
+                1,
+                submatch_record!(st, mid1, mid2),
+            ),
             st,
         )
     end
 end
 
 function match_clause!(x::Many, id::Int, pos::Int, st::ParserState)::MatchResult
-    mid1 = lookup_best_match_id!(MemoKey(x.item, pos), st)
+    mid1 = lookup_best_match_id!(pos, x.item, st)
     if isnothing(mid1)
         return match_epsilon!(x, id, pos, st)
     end
-    mid2 = lookup_best_match_id!(MemoKey(id, pos + st.matches[mid1].len), st)
+    mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
     isnothing(mid2) && error("Many did not match, but it should have had!")
     new_match!(
-        Match(id, pos, st.matches[mid1].len + st.matches[mid2].len, 1, [mid1, mid2]),
+        Match(
+            id,
+            pos,
+            st.matches[mid1].len + st.matches[mid2].len,
+            1,
+            submatch_record!(st, mid1, mid2),
+        ),
         st,
     )
 end
 
 function match_clause!(x::Tie, id::Int, pos::Int, st::ParserState)::MatchResult
-    mid = lookup_best_match_id!(MemoKey(x.tuple, pos), st)
+    mid = lookup_best_match_id!(pos, x.tuple, st)
     isnothing(mid) && return nothing
-    new_match!(Match(id, pos, st.matches[mid].len, 1, [mid]), st)
+    new_match!(Match(id, pos, st.matches[mid].len, 1, submatch_record!(st, mid)), st)
 end
 
 
 
 match_epsilon!(x::Clause, id::Int, pos::Int, st::ParserState) =
-    new_match!(Match(id, pos, 0, 0, []), st)
+    new_match!(Match(id, pos, 0, 0, submatch_empty(st)), st)
 
 function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)
     # This might technically cause infinite recursion, byt a cycle of
     # NotFollowedBy clauses is disallowed by the error thrown by
     # can_match_epsilon(::NotFollowedBy, ...)
-    mid = lookup_best_match_id!(MemoKey(x.reserved, pos), st)
+    mid = lookup_best_match_id!(pos, x.reserved, st)
     if isnothing(mid)
-        new_match!(Match(id, pos, 0, 0, []), st)
+        new_match!(Match(id, pos, 0, 0, submatch_empty(st)), st)
     else
         nothing
     end
@@ -250,7 +271,7 @@ end
 
 function user_view(x::Union{Seq,First,FollowedBy}, id::Int, mid::Int, st::ParserState)
     m = st.matches[mid]
-    UserMatch(id, m, m.submatches, st)
+    UserMatch(id, m, collect(submatches(st, mid)), st)
 end
 
 function user_view(x::Some, id::Int, mid::Int, st::ParserState)
@@ -258,17 +279,17 @@ function user_view(x::Some, id::Int, mid::Int, st::ParserState)
     m = mid
     while st.matches[m].option_idx == 1
         len += 1
-        m = st.matches[m].submatches[2]
+        m = submatches(st, m)[2]
     end
     res = Vector{Int}(undef, len)
     m = mid
     idx = 1
     while st.matches[m].option_idx == 1
-        res[idx] = st.matches[m].submatches[1]
+        res[idx] = submatches(st, m)[1]
         idx += 1
-        m = st.matches[m].submatches[2]
+        m = submatches(st, m)[2]
     end
-    res[idx] = st.matches[m].submatches[1]
+    res[idx] = submatches(st, m)[1]
     UserMatch(id, st.matches[mid], res, st)
 end
 
@@ -277,15 +298,15 @@ function user_view(x::Many, id::Int, mid::Int, st::ParserState)
     m = mid
     while st.matches[m].option_idx == 1
         len += 1
-        m = st.matches[m].submatches[2]
+        m = submatches(st, m)[2]
     end
     res = Vector{Int}(undef, len)
     m = mid
     idx = 1
     while st.matches[m].option_idx == 1
-        res[idx] = st.matches[m].submatches[1]
+        res[idx] = submatches(st, m)[1]
         idx += 1
-        m = st.matches[m].submatches[2]
+        m = submatches(st, m)[2]
     end
     UserMatch(id, st.matches[mid], res, st)
 end
@@ -297,7 +318,7 @@ function user_view(x::Tie, id::Int, mid::Int, st::ParserState)
         return UserMatch(id, m.pos, m.len, [], st)
     end
 
-    tmid = m.submatches[1]
+    tmid = submatches(st, mid)[1]
     tm = st.matches[tmid]
 
     ccmids = Int[]

@@ -2,22 +2,6 @@
 """
 $(TYPEDSIGNATURES)
 
-Find any possible match of anything starting at input position `pos`.
-Preferentially returns the parses that are topologically higher.
-
-If found, returns the [`Match`](@ref) index in [`ParserState`](@ref), and the
-name of the corresponding grammar production rule.
-"""
-function find_first_parse_at(st::ParserState{G}, pos::Int)::Maybe{Tuple{Int,G}} where {G}
-    tk = searchsortedfirst(st.memo, MemoKey(0, pos - 1))
-    tk == pastendsemitoken(st.memo) && return nothing
-    k = deref_key((st.memo, tk))
-    return (st.memo[k], st.grammar.names[k.clause])
-end
-
-"""
-$(TYPEDSIGNATURES)
-
 Find the [`Match`](@ref) index in [`ParserState`](@ref) that matched `rule` at
 position `pos`, or `nothing` if there is no such match.
 
@@ -26,7 +10,7 @@ function creates the necessary matches in the tables in `st` in case they are
 missing. (That is the reason for the `!` label.)
 """
 function find_match_at!(st::ParserState{G}, rule::G, pos::Int)::Maybe{Int} where {G}
-    lookup_best_match_id!(MemoKey(st.grammar.idx[rule], pos), st)
+    lookup_best_match_id!(pos, st.grammar.idx[rule], st)
 end
 
 """
