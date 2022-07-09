@@ -34,6 +34,11 @@ end
 # splaytree operations for the memo table
 #
 
+function adjust_match!(st::ParserState, mid::Int; kwargs...)
+    st.matches[mid] = Match(st.matches[mid]; kwargs...)
+    nothing
+end
+
 function adjust_child!(st::ParserState, mid::Int, old::Int, new::Int)
     if mid == 0
         st.memo_root = new
@@ -42,25 +47,23 @@ function adjust_child!(st::ParserState, mid::Int, old::Int, new::Int)
 
     m = st.matches[mid]
     if m.left == old
-        m.left = new
+        adjust_match!(st, mid, left = new)
     elseif m.right == old
-        m.right = new
+        adjust_match!(st, mid, right = new)
     else
         error("child missed!")
     end
-    nothing
 end
 
 function adjust_parent!(st::ParserState, mid::Int, new::Int)
     mid == 0 && return
-    st.matches[mid].parent = new
-    nothing
+    adjust_match!(st, mid, parent = new)
 end
 
 function match_splay!(st::ParserState, mid::Int)
-    m = st.matches[mid]
-
     while true
+        m = st.matches[mid]
+
         #@info "splay" mid m
         m.parent == 0 && break
 
@@ -71,12 +74,10 @@ function match_splay!(st::ParserState, mid::Int)
         if mid == p.left
             # left child
             if p.parent == 0
+                adjust_match!(st, mid, right = pid, parent=0)
+                adjust_match!(st, pid, left = m.right, parent=mid)
                 adjust_parent!(st, m.right, pid)
-                p.left = m.right
-                m.right = pid
-                p.parent = mid
-                m.parent = 0
-                #@info "L" mid m pid p
+                #@info "L" mid m pid p st.matches[mid] st.matches[pid]
                 break
             end
             ppid = p.parent
@@ -84,44 +85,30 @@ function match_splay!(st::ParserState, mid::Int)
             #@info "L pparent" pp
             if m.parent == pp.left
                 # left of left
-                a = m.right
-                b = p.right
                 adjust_child!(st, pp.parent, ppid, mid)
-                m.parent = pp.parent
-                m.right = pid
-                p.parent = mid
-                p.left = a
-                adjust_parent!(st, a, pid)
-                p.right = ppid
-                pp.parent = pid
-                pp.left = b
-                adjust_parent!(st, b, ppid)
-                #@info "LL" mid m pid p ppid pp
+                adjust_match!(st, mid, parent=pp.parent, right=pid)
+                adjust_match!(st, pid, parent=mid, left=m.right, right=ppid)
+                adjust_match!(st, ppid, parent=pid, left=p.right)
+                adjust_parent!(st, m.right, pid)
+                adjust_parent!(st, p.right, ppid)
+                #@info "LL" mid m pid p ppid pp st.matches[mid] st.matches[pid] st.matches[ppid]
             else
                 # left of right
-                a = m.left
-                b = m.right
                 adjust_child!(st, pp.parent, ppid, mid)
-                m.parent = pp.parent
-                m.right = pid
-                p.parent = mid
-                p.left = b
-                adjust_parent!(st, b, pid)
-                m.left = ppid
-                pp.parent = mid
-                pp.right = a
-                adjust_parent!(st, a, ppid)
-                #@info "LR" mid m pid p ppid pp
+                adjust_match!(st, mid, parent=pp.parent, left=ppid, right=pid)
+                adjust_match!(st, pid, parent=mid, left=m.right)
+                adjust_match!(st, ppid, parent=mid, right=m.left)
+                adjust_parent!(st, m.right, pid)
+                adjust_parent!(st, m.left, ppid)
+                #@info "LR" mid m pid p ppid pp st.matches[mid] st.matches[pid] st.matches[ppid]
             end
         else
             # right child
             if p.parent == 0
+                adjust_match!(st, mid, left = pid, parent=0)
+                adjust_match!(st, pid, right = m.left, parent=mid)
                 adjust_parent!(st, m.left, pid)
-                p.right = m.left
-                m.left = pid
-                p.parent = mid
-                m.parent = 0
-                #@info "R" mid m pid p
+                #@info "R" mid m pid p st.matches[mid] st.matches[pid]
                 break
             end
             ppid = p.parent
@@ -129,34 +116,22 @@ function match_splay!(st::ParserState, mid::Int)
             #@info "R pparent" pp
             if m.parent == pp.left
                 # right of left
-                a = m.left
-                b = m.right
                 adjust_child!(st, pp.parent, ppid, mid)
-                m.parent = pp.parent
-                m.left = pid
-                p.parent = mid
-                p.right = a
-                adjust_parent!(st, a, pid)
-                m.right = ppid
-                pp.parent = mid
-                pp.left = b
-                adjust_parent!(st, b, ppid)
-                #@info "RL" mid m pid p ppid pp
+                adjust_match!(st, mid, parent=pp.parent, right=ppid, left=pid)
+                adjust_match!(st, pid, parent=mid, right=m.left)
+                adjust_match!(st, ppid, parent=mid, left=m.right)
+                adjust_parent!(st, m.left, pid)
+                adjust_parent!(st, m.right, ppid)
+                #@info "RL" mid m pid p ppid pp st.matches[mid] st.matches[pid] st.matches[ppid]
             else
                 # right of right
-                a = m.left
-                b = p.left
                 adjust_child!(st, pp.parent, ppid, mid)
-                m.parent = pp.parent
-                m.left = pid
-                p.parent = mid
-                p.right = a
-                adjust_parent!(st, a, pid)
-                p.left = ppid
-                pp.parent = pid
-                pp.right = b
-                adjust_parent!(st, b, ppid)
-                #@info "RR" mid m pid p ppid pp
+                adjust_match!(st, mid, parent=pp.parent, left=pid)
+                adjust_match!(st, pid, parent=mid, right=m.left, left=ppid)
+                adjust_match!(st, ppid, parent=pid, right=p.left)
+                adjust_parent!(st, m.left, pid)
+                adjust_parent!(st, p.left, ppid)
+                #@info "RR" mid m pid p ppid pp st.matches[mid] st.matches[pid] st.matches[ppid]
             end
         end
     end
@@ -185,8 +160,8 @@ function match_insert!(st::ParserState, nmid::Int)
         if nm.pos < m.pos || (nm.pos == m.pos && nm.clause > m.clause)
             if m.left == 0
                 # append left
-                nm.parent = mid
-                m.left = nmid
+                adjust_match!(st, nmid, parent=mid)
+                adjust_match!(st, mid, left=nmid)
                 match_splay!(st, nmid)
                 return
             else
@@ -196,8 +171,8 @@ function match_insert!(st::ParserState, nmid::Int)
         elseif nm.pos > m.pos || (nm.pos == m.pos && nm.clause < m.clause)
             if m.right == 0
                 # append right
-                nm.parent = mid
-                m.right = nmid
+                adjust_match!(st, nmid, parent=mid)
+                adjust_match!(st, mid, right=nmid)
                 match_splay!(st, nmid)
                 return
             else
@@ -206,9 +181,7 @@ function match_insert!(st::ParserState, nmid::Int)
             end
         else
             # replace
-            nm.parent = m.parent
-            nm.left = m.left
-            nm.right = m.right
+            adjust_match!(st, nmid, parent=m.parent, left=m.left, right=m.right)
 
             # adjust environs
             adjust_child!(st, m.parent, mid, nmid)
@@ -216,9 +189,7 @@ function match_insert!(st::ParserState, nmid::Int)
             adjust_parent!(st, m.right, nmid)
 
             # disconnect the old match
-            m.parent = 0
-            m.left = 0
-            m.right = 0
+            adjust_match!(st, mid, parent=0, left=0, right=0)
 
             match_splay!(st, nmid)
             return
@@ -228,7 +199,7 @@ end
 
 function match_find!(st::ParserState, clause::Int, pos::Int)::MatchResult
     mid = st.memo_root
-    mid == 0 && return nothing
+    mid == 0 && return 0
     while true
         #@info "find" mid
         m = st.matches[mid]
@@ -240,7 +211,7 @@ function match_find!(st::ParserState, clause::Int, pos::Int)::MatchResult
         nmid = pos < m.pos || (pos == m.pos && clause > m.clause) ? m.left : m.right
         if nmid == 0
             match_splay!(st, mid)
-            return nothing
+            return 0
         end
 
         mid = nmid

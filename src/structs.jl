@@ -6,7 +6,7 @@
 """
 $(TYPEDEF)
 
-Abstract type for all clauses that match a grammar with rule labels of type `G`.
+Abstract type for all clauses that match a grammar with rule labels of type `G` that match sequences of tokens of type `T`.
 
 Currently implemented clauses:
 - [`Satisfy`](@ref)
@@ -25,7 +25,7 @@ Currently implemented clauses:
 
 Often it is better to use convenience functions for rule construction, such as [`seq`](@ref) or [`token`](@ref); see [`flatten`](@ref) for details.
 """
-abstract type Clause{G} end
+abstract type Clause{G,T} end
 
 """
 $(TYPEDEF)
@@ -36,7 +36,7 @@ function returns `true`.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Satisfy{G} <: Clause{G}
+struct Satisfy{G,T} <: Clause{G,T}
     match::Function
 end
 
@@ -52,7 +52,7 @@ In case there's no match, it returns `nothing`.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Scan{G} <: Clause{G}
+struct Scan{G,T} <: Clause{G,T}
     match::Function
 end
 
@@ -64,8 +64,8 @@ A single token equal to `match`.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Token{G} <: Clause{G}
-    token::Any #TODO carry the token type in the parameter?
+struct Token{G,T} <: Clause{G,T}
+    token::T
 end
 
 """
@@ -76,8 +76,8 @@ A series of tokens equal to `match`.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Tokens{G} <: Clause{G}
-    tokens::Vector
+struct Tokens{G,T} <: Clause{G,T}
+    tokens::Vector{T}
 end
 
 """
@@ -85,14 +85,14 @@ $(TYPEDEF)
 
 An always-succeeding epsilon match.
 """
-struct Epsilon{G} <: Clause{G} end
+struct Epsilon{G,T} <: Clause{G,T} end
 
 """
 $(TYPEDEF)
 
 An always-failing match.
 """
-struct Fail{G} <: Clause{G} end
+struct Fail{G,T} <: Clause{G,T} end
 
 """
 $(TYPEDEF)
@@ -103,7 +103,7 @@ match, as in [`Epsilon`](@ref).
 # Fields
 $(TYPEDFIELDS)
 """
-struct Seq{G} <: Clause{G}
+struct Seq{G,T} <: Clause{G,T}
     children::Vector{G}
 end
 
@@ -116,7 +116,7 @@ unconditional failure.
 # Fields
 $(TYPEDFIELDS)
 """
-struct First{G} <: Clause{G}
+struct First{G,T} <: Clause{G,T}
     children::Vector{G}
 end
 
@@ -128,7 +128,7 @@ Zero-length match that succeeds if `reserved` does _not_ match at the same posit
 # Fields
 $(TYPEDFIELDS)
 """
-struct NotFollowedBy{G} <: Clause{G}
+struct NotFollowedBy{G,T} <: Clause{G,T}
     reserved::G
 end
 
@@ -140,7 +140,7 @@ Zero-length match that succeeds if `follow` does match at the same position.
 # Fields
 $(TYPEDFIELDS)
 """
-struct FollowedBy{G} <: Clause{G}
+struct FollowedBy{G,T} <: Clause{G,T}
     follow::G
 end
 
@@ -152,7 +152,7 @@ Greedily matches a sequence of matches, with at least 1 match.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Some{G} <: Clause{G}
+struct Some{G,T} <: Clause{G,T}
     item::G
 end
 
@@ -164,7 +164,7 @@ Greedily matches a sequence of matches that can be empty.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Many{G} <: Clause{G}
+struct Many{G,T} <: Clause{G,T}
     item::G
 end
 
@@ -180,7 +180,7 @@ are _not_ going to be present in the parse tree.)
 # Fields
 $(TYPEDFIELDS)
 """
-struct Tie{G} <: Clause{G}
+struct Tie{G,T} <: Clause{G,T}
     tuple::G
 end
 
@@ -196,7 +196,7 @@ A representation of the grammar prepared for parsing.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Grammar{G}
+struct Grammar{G,T}
     "Topologically sorted list of rule labels (non-terminals)"
     names::Vector{G}
 
@@ -204,7 +204,7 @@ struct Grammar{G}
     idx::Dict{G,Int}
 
     "Clauses of the grammar converted to integer labels (and again sorted topologically)"
-    clauses::Vector{Clause{Int}}
+    clauses::Vector{Clause{Int,T}}
 
     "Flags for the rules being able to match on empty string unconditionally"
     can_match_epsilon::Vector{Bool}
@@ -224,7 +224,7 @@ Internal match representation.
 # Fields
 $(TYPEDFIELDS)
 """
-mutable struct Match
+struct Match
     "Which clause has matched here?"
     clause::Int
 
@@ -250,7 +250,9 @@ mutable struct Match
     parent::Int
 end
 
-Match(c, p, l, o, s) = Match(c, p, l, o, s, 0, 0, 0)
+Match(c::Int, p::Int, l::Int, o::Int, s::Int) = Match(c, p, l, o, s, 0, 0, 0)
+
+Match(m::Match; clause::Int=m.clause, pos::Int=m.pos, len::Int=m.len, option_idx::Int=m.option_idx, submatches::Int=m.submatches, left::Int=m.left, right::Int=m.right, parent::Int=m.parent) = Match(clause, pos, len, option_idx, submatches, left, right, parent)
 
 """
 $(TYPEDEF)
@@ -301,9 +303,9 @@ tree.
 # Fields
 $(TYPEDFIELDS)
 """
-mutable struct ParserState{G,I}
+mutable struct ParserState{G,T,I}
     "Copy of the grammar used to parse the input."
-    grammar::Grammar{G}
+    grammar::Grammar{G,T}
 
     "Queue for rules that should match, used only internally."
     q::PikaQueue
@@ -327,7 +329,7 @@ $(TYPEDEF)
 A match index in [`ParserState`](@ref) field `matches`, or `nothing` if the
 match failed.
 """
-const MatchResult = Maybe{Int}
+const MatchResult = Int
 
 """
 $(TYPEDEF)

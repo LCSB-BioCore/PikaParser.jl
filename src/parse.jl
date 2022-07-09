@@ -1,13 +1,13 @@
 
 function lookup_best_match_id!(pos::Int, clause::Int, st::ParserState)::MatchResult
     mid = match_find!(st, clause, pos)
-    isnothing(mid) || return mid
+    mid!=0 && return mid
 
     if st.grammar.can_match_epsilon[clause]
         return match_epsilon!(st.grammar.clauses[clause], clause, pos, st)
     end
 
-    return nothing
+    return 0
 end
 
 function new_match!(match::Match, st::ParserState)::Int
@@ -15,16 +15,18 @@ function new_match!(match::Match, st::ParserState)::Int
     return length(st.matches)
 end
 
-function add_match!(pos::Int, clause::Int, match::MatchResult, st::ParserState)
+function add_match!(pos::Int, clause::Int, match::Int, st::ParserState)
     updated = false
-    if !isnothing(match)
+
+    if match != 0
         old = match_find!(st, clause, pos)
-        if isnothing(old) ||
+        if old==0 ||
            better_match_than(st.grammar.clauses[clause], st.matches[match], st.matches[old])
             match_insert!(st, match)
             updated = true
         end
     end
+
     for seed in st.grammar.seed_clauses[clause]
         if updated || st.grammar.can_match_epsilon[seed]
             push!(st.q, seed)
@@ -73,11 +75,11 @@ span the whole input.
     )
 """
 function parse(
-    grammar::Grammar{G},
+    grammar::Grammar{G,T},
     input::I,
     fast_match = nothing,
-)::ParserState{G,I} where {G,I<:AbstractVector}
-    st = ParserState(grammar, PikaQueue(length(grammar.clauses)), Match[], 0, Int[], input)
+)::ParserState{G,T,I} where {G,T,I<:AbstractVector{T}}
+    st = ParserState{G,T,I}(grammar, PikaQueue(length(grammar.clauses)), Match[], 0, Int[], input)
 
     # a queue pre-filled with terminal matches (used so that we don't need to refill it manually everytime)
     terminal_q = PikaQueue(length(grammar.clauses))
@@ -102,7 +104,8 @@ function parse(
         end
         while !isempty(st.q)
             clause = pop!(st.q)
-            match = match_clause!(grammar.clauses[clause], clause, i, st)
+            #"clause" G T I grammar.clauses[clause]
+            match = match_clause!(grammar.clauses[clause]::Clause{Int,T}, clause, i, st)::MatchResult
             add_match!(i, clause, match, st)
         end
     end

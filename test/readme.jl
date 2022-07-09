@@ -12,7 +12,7 @@
         :minusexpr => P.seq(:expr, P.token('-'), :expr),
     )
 
-    rules_flat = P.flatten(rules)
+    rules_flat = P.flatten(rules, Char)
 
     @test issetequal(
         keys(rules_flat),
@@ -42,7 +42,7 @@
     p = P.parse(g, input)
 
     mid = P.find_match_at!(p, :expr, 1)
-    @test !isnothing(mid)
+    @test mid != 0
     @test p.matches[mid].pos == 1
     @test P.view_match(p, mid) == input
 

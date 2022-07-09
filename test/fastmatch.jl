@@ -5,7 +5,7 @@
         :seq => P.seq(:digits, P.many(:cont => P.seq(:sep => P.fail, :digits))),
     )
 
-    g = P.make_grammar([:seq], P.flatten(rules))
+    g = P.make_grammar([:seq], P.flatten(rules, Char))
     input = collect("123,234,345")
     p = P.parse(g, input, (input, i, r) -> input[i] == ',' ? r(:sep, 1) : r(:digit, 1))
 

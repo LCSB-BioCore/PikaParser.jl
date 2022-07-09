@@ -8,7 +8,7 @@ Build a [`Satisfy`](@ref) clause. Translate to strongly typed grammar with [`fla
 
     satisfy(isdigit)
 """
-satisfy(f::Function) = Satisfy{Any}(f)
+satisfy(f::Function) = Satisfy{Any,Any}(f)
 
 """
 $(TYPEDSIGNATURES)
@@ -20,7 +20,7 @@ Build a [`Scan`](@ref) clause. Translate to strongly typed grammar with [`flatte
     # rule to match a pair of equal tokens
     scan(m -> m[1] == m[2] ? 2 : nothing)
 """
-scan(f::Function) = Scan{Any}(f)
+scan(f::Function) = Scan{Any,Any}(f)
 
 """
 $(TYPEDSIGNATURES)
@@ -31,7 +31,9 @@ Build a [`Token`](@ref) clause. Translate to strongly typed grammar with [`flatt
 
     token('a')
 """
-token(x) = Token{Any}(x)
+function token(x::T) where T
+    Token{Any,T}(x)
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -42,7 +44,9 @@ Build a [`Tokens`](@ref) clause. Translate to strongly typed grammar with [`flat
 
     tokens(collect("keyword"))
 """
-tokens(xs::Vector) = Tokens{Any}(xs)
+function tokens(xs::AbstractVector{T}) where T
+    Tokens{Any,T}(xs)
+end
 
 """
     epsilon :: Clause
@@ -53,7 +57,7 @@ An [`Epsilon`](@ref) clause. Translate to strongly typed grammar with [`flatten`
 
     maybe_letter_a = first(token('a'), epsilon)
 """
-const epsilon = Epsilon{Any}()
+const epsilon = Epsilon{Any,Any}()
 
 """
     fail :: Clause
@@ -68,7 +72,7 @@ Useful for avoiding rule specification when matching terminals using the
 
     seq(:this, :that, fail)  # this rule is effectively disabled
 """
-const fail = Fail{Any}()
+const fail = Fail{Any,Any}()
 
 """
 $(TYPEDSIGNATURES)
@@ -79,7 +83,7 @@ Build a [`Seq`](@ref) clause. Translate to strongly typed grammar with [`flatten
 
     digit_in_parents = seq(token('('), :digit, token(')'))
 """
-seq(args...) = Seq(collect(args))
+seq(args...) = Seq{Any, Any}(collect(args))
 
 """
 $(TYPEDSIGNATURES)
@@ -90,7 +94,7 @@ Build a [`First`](@ref) clause. Translate to strongly typed grammar with [`flatt
 
     first(:something, :fallback, :fallback2)
 """
-first(args...) = First(collect(args))
+first(args...) = First{Any, Any}(collect(args))
 
 """
 $(TYPEDSIGNATURES)
@@ -101,7 +105,9 @@ Build a [`NotFollowedBy`](@ref) clause. Translate to strongly typed grammar with
 
     seq(not_followed_by(tokens(collect("reservedWord"))), :identifier)
 """
-not_followed_by(x) = NotFollowedBy(x)
+function not_followed_by(x::G) where G
+    NotFollowedBy{G,Any}(x)
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -112,7 +118,9 @@ Build a [`FollowedBy`](@ref) clause. Translate to strongly typed grammar with [`
 
     seq(:digits, followed_by(:whitespace))
 """
-followed_by(x) = FollowedBy(x)
+function followed_by(x::G) where G
+    FollowedBy{G,Any}(x)
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -123,7 +131,9 @@ Build a [`Some`](@ref) clause. Translate to strongly typed grammar with [`flatte
 
     some(satisfy(isspace))
 """
-some(x) = Some(x)
+function some(x::G) where G
+    Some{G,Any}(x)
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -134,7 +144,9 @@ Build a [`Many`](@ref) clause. Translate to strongly typed grammar with [`flatte
 
     seq(:quote, many(:quote_contents), :quote)
 """
-many(x) = Many(x)
+function many(x::G) where G
+    Many{G,Any}(x)
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -145,7 +157,9 @@ Build a [`Tie`](@ref) clause. Translate to strongly typed grammar with [`flatten
 
     :alternating_A_and_B => tie(many(seq(:A, :B)))
 """
-tie(x) = Tie(x)
+function tie(x::G) where G
+    Tie{G,Any}(x)
+end
 
 """
 $(TYPEDSIGNATURES)
@@ -267,10 +281,11 @@ implementation for other grammars labeled e.g. by integers or strings).
 """
 function flatten(
     rules::Dict{G},
+    tokentype::DataType,
     childlabel::Function = (rid, idx) -> Symbol(rid, :-, idx),
-)::Dict{G,Clause{G}} where {G}
+) where G
     todo = Pair{G,Clause}[r for r in rules]
-    res = Dict{G,Clause{G}}()
+    res = Dict{G,Clause{G,tokentype}}()
 
     while !isempty(todo)
         rid, clause = pop!(todo)
@@ -280,6 +295,7 @@ function flatten(
         end
         tmp = rechildren(
             clause,
+            tokentype,
             G[
                 (
                     if ch isa G
