@@ -41,19 +41,19 @@ function child_clauses(x::Tie{G})::Vector{G} where {G}
 end
 
 
-rechildren(x::Satisfy, v::Vector) = Satisfy{valtype(v)}(x.match)
-rechildren(x::Scan, v::Vector) = Scan{valtype(v)}(x.match)
-rechildren(x::Token, v::Vector) = Token{valtype(v)}(x.token)
-rechildren(x::Tokens, v::Vector) = Tokens{valtype(v)}(x.tokens)
-rechildren(x::Epsilon, v::Vector) = Epsilon{valtype(v)}()
-rechildren(x::Fail, v::Vector) = Fail{valtype(v)}()
-rechildren(x::Seq, v::Vector) = Seq{valtype(v)}(v)
-rechildren(x::First, v::Vector) = First{valtype(v)}(v)
-rechildren(x::NotFollowedBy, v::Vector) = NotFollowedBy{valtype(v)}(Base.first(v))
-rechildren(x::FollowedBy, v::Vector) = FollowedBy{valtype(v)}(Base.first(v))
-rechildren(x::Some, v::Vector) = Some{valtype(v)}(Base.first(v))
-rechildren(x::Many, v::Vector) = Many{valtype(v)}(Base.first(v))
-rechildren(x::Tie, v::Vector) = Tie{valtype(v)}(Base.first(v))
+rechildren(x::Satisfy, t::DataType, v::Vector) = Satisfy{valtype(v),t}(x.match)
+rechildren(x::Scan, t::DataType, v::Vector) = Scan{valtype(v),t}(x.match)
+rechildren(x::Token, t::DataType, v::Vector) = Token{valtype(v),t}(x.token)
+rechildren(x::Tokens, t::DataType, v::Vector) = Tokens{valtype(v),t}(x.tokens)
+rechildren(x::Epsilon, t::DataType, v::Vector) = Epsilon{valtype(v),t}()
+rechildren(x::Fail, t::DataType, v::Vector) = Fail{valtype(v),t}()
+rechildren(x::Seq, t::DataType, v::Vector) = Seq{valtype(v),t}(v)
+rechildren(x::First, t::DataType, v::Vector) = First{valtype(v),t}(v)
+rechildren(x::NotFollowedBy, t::DataType, v::Vector) = NotFollowedBy{valtype(v),t}(Base.first(v))
+rechildren(x::FollowedBy, t::DataType, v::Vector) = FollowedBy{valtype(v),t}(Base.first(v))
+rechildren(x::Some, t::DataType, v::Vector) = Some{valtype(v),t}(Base.first(v))
+rechildren(x::Many, t::DataType, v::Vector) = Many{valtype(v),t}(Base.first(v))
+rechildren(x::Tie, t::DataType, v::Vector) = Tie{valtype(v),t}(Base.first(v))
 
 
 function seeded_by(x::Clause{G}, ::Vector{Bool})::Vector{G} where {G}
@@ -116,6 +116,8 @@ can_match_epsilon(x::Tie, ch::Vector{Bool}) = ch[1]
 function match_clause!(x::Satisfy, id::Int, pos::Int, st::ParserState)::MatchResult
     if x.match(st.input[pos])
         new_match!(Match(id, pos, 1, 0, submatch_empty(st)), st)
+    else
+        0
     end
 end
 
@@ -123,19 +125,25 @@ function match_clause!(x::Scan, id::Int, pos::Int, st::ParserState)::MatchResult
     match_len = x.match(view(st.input, pos:length(st.input)))
     if !isnothing(match_len)
         new_match!(Match(id, pos, match_len, 0, submatch_empty(st)), st)
+    else
+        0
     end
 end
 
-function match_clause!(x::Token, id::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::Token{IG,T}, id::Int, pos::Int, st::ParserState{G,T,I})::MatchResult where {IG,G,I,T}
     if st.input[pos] == x.token
         new_match!(Match(id, pos, 1, 0, submatch_empty(st)), st)
+    else
+        0
     end
 end
 
-function match_clause!(x::Tokens, id::Int, pos::Int, st::ParserState)::MatchResult
+function match_clause!(x::Tokens{IG,T}, id::Int, pos::Int, st::ParserState{G,T,I})::MatchResult where {IG,G,I,T}
     len = length(x.tokens)
-    if pos - 1 + len <= length(st.input) && st.input[pos:pos-1+len] == x.tokens
+    if pos - 1 + len <= length(st.input) && all(st.input[pos:pos-1+len] .== x.tokens)
         new_match!(Match(id, pos, len, 0, submatch_empty(st)), st)
+    else
+        0
     end
 end
 
@@ -145,7 +153,7 @@ function match_clause!(x::Seq, id::Int, orig_pos::Int, st::ParserState)::MatchRe
     pos = orig_pos
     for c in x.children
         mid = lookup_best_match_id!(pos, c, st)
-        isnothing(mid) && return nothing
+        mid == 0 && return 0
         pos += st.matches[mid].len
     end
 
@@ -163,20 +171,20 @@ end
 function match_clause!(x::First, id::Int, pos::Int, st::ParserState)::MatchResult
     for (i, c) in enumerate(x.children)
         mid = lookup_best_match_id!(pos, c, st)
-        if !isnothing(mid)
+        if mid != 0
             return new_match!(
                 Match(id, pos, st.matches[mid].len, i, submatch_record!(st, mid)),
                 st,
             )
         end
     end
-    nothing
+    0
 end
 
 function match_clause!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
     mid = lookup_best_match_id!(pos, x.follow, st)
-    if isnothing(mid)
-        nothing
+    if mid == 0
+        0
     else
         new_match!(Match(id, pos, 0, 1, submatch_record!(st, mid)), st)
     end
@@ -184,9 +192,9 @@ end
 
 function match_clause!(x::Some, id::Int, pos::Int, st::ParserState)::MatchResult
     mid1 = lookup_best_match_id!(pos, x.item, st)
-    isnothing(mid1) && return nothing
+    mid1 == 0 && return 0
     mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
-    if isnothing(mid2)
+    if mid2 == 0
         new_match!(Match(id, pos, st.matches[mid1].len, 0, submatch_record!(st, mid1)), st)
     else
         new_match!(
@@ -204,11 +212,11 @@ end
 
 function match_clause!(x::Many, id::Int, pos::Int, st::ParserState)::MatchResult
     mid1 = lookup_best_match_id!(pos, x.item, st)
-    if isnothing(mid1)
+    if mid1 == 0
         return match_epsilon!(x, id, pos, st)
     end
     mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
-    isnothing(mid2) && error("Many did not match, but it should have had!")
+    mid2 == 0 && error("Many did not match, but it should have had!")
     new_match!(
         Match(
             id,
@@ -223,7 +231,7 @@ end
 
 function match_clause!(x::Tie, id::Int, pos::Int, st::ParserState)::MatchResult
     mid = lookup_best_match_id!(pos, x.tuple, st)
-    isnothing(mid) && return nothing
+    mid == 0 && return 0
     new_match!(Match(id, pos, st.matches[mid].len, 1, submatch_record!(st, mid)), st)
 end
 
@@ -237,10 +245,10 @@ function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)
     # NotFollowedBy clauses is disallowed by the error thrown by
     # can_match_epsilon(::NotFollowedBy, ...)
     mid = lookup_best_match_id!(pos, x.reserved, st)
-    if isnothing(mid)
+    if mid == 0
         new_match!(Match(id, pos, 0, 0, submatch_empty(st)), st)
     else
-        nothing
+        0
     end
 end
 
@@ -253,9 +261,9 @@ function UserMatch(
     id::Int,
     m::Match,
     submatches::Vector{Int},
-    st::ParserState{G,I},
-) where {G,I}
-    UserMatch{G,eltype(I)}(
+    st::ParserState{G,T,I},
+) where {G,T,I}
+    UserMatch{G,T}(
         st.grammar.names[id],
         m.pos,
         m.len,

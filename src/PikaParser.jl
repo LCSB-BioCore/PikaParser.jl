@@ -3,7 +3,6 @@ $(README)
 """
 module PikaParser
 
-using DataStructures
 using DocStringExtensions
 
 include("structs.jl")

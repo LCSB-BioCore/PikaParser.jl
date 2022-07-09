@@ -17,7 +17,7 @@
         )...,
     )
 
-    g = P.make_grammar([:expr], P.flatten(rules))
+    g = P.make_grammar([:expr], P.flatten(rules, Char))
 
     @test issetequal(
         g.names,
@@ -68,7 +68,7 @@ end
         end
     )
 
-    g = P.make_grammar([:expr], P.flatten(rules))
+    g = P.make_grammar([:expr], P.flatten(rules, Char))
 
     @test issetequal(
         g.names,
