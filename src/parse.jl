@@ -32,6 +32,8 @@ function add_match!(pos::Int, clause::Int, match::Int, st::ParserState)
             push!(st.q, seed)
         end
     end
+
+    nothing
 end
 
 """
@@ -84,6 +86,9 @@ function parse(
     # a queue pre-filled with terminal matches (used so that we don't need to refill it manually everytime)
     terminal_q = PikaQueue(length(grammar.clauses))
     reset!(terminal_q, grammar.terminals)
+    match = Ref{Int}(0)
+    pclause = Ref{Int}(0)
+    ii = Ref{Int}(0)
 
     for i in reverse(eachindex(input))
         if isnothing(fast_match)
@@ -104,9 +109,11 @@ function parse(
         end
         while !isempty(st.q)
             clause = pop!(st.q)
-            #"clause" G T I grammar.clauses[clause]
-            match = match_clause!(grammar.clauses[clause]::Clause{Int,T}, clause, i, st)::MatchResult
-            add_match!(i, clause, match, st)
+            match[] = 0
+            pclause[] = clause
+            ii[] = i
+            match_clause!(grammar.clauses[clause], pclause, ii, st, match)
+            add_match!(i, clause, match[], st)
         end
     end
 
