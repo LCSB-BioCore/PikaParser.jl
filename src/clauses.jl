@@ -113,95 +113,94 @@ can_match_epsilon(x::Tie, ch::Vector{Bool}) = ch[1]
 # Clause matching
 #
 
-function match_clause!(x::Satisfy, id::Ref{Int}, pos::Ref{Int}, st::ParserState, ret::Ref{Int})
-    if x.match(st.input[pos[]])
-        ret[] = new_match!(Match(id[], pos[], 1, 0, submatch_empty(st)), st)
+function match_clause!(x::Satisfy, id::Int, pos::Int, st::ParserState)::MatchResult
+    if x.match(st.input[pos])
+        new_match!(Match(id, pos, 1, 0, submatch_empty(st)), st)
+    else
+        0
     end
-    nothing
 end
 
-function match_clause!(x::Scan, id::Ref{Int}, pos::Ref{Int}, st::ParserState, ret::Ref{Int})
-    match_len = x.match(view(st.input, (pos[]):length(st.input)))
+function match_clause!(x::Scan, id::Int, pos::Int, st::ParserState)::MatchResult
+    match_len = x.match(view(st.input, pos:length(st.input)))
     if !isnothing(match_len)
-        ret[] = new_match!(Match(id[], pos[], match_len, 0, submatch_empty(st)), st)
+        new_match!(Match(id, pos, match_len, 0, submatch_empty(st)), st)
+    else
+        0
     end
-    nothing
 end
 
-function match_clause!(x::Token{IG,T}, id::Ref{Int}, pos::Ref{Int}, st::ParserState{G,T,I}, ret::Ref{Int}) where {IG,G,I,T}
-    if st.input[pos[]] == x.token
-        ret[] = new_match!(Match(id[], pos[], 1, 0, submatch_empty(st)), st)
+function match_clause!(x::Token{IG,T}, id::Int, pos::Int, st::ParserState{G,T,I})::MatchResult where {IG,G,I,T}
+    if st.input[pos] == x.token
+        new_match!(Match(id, pos, 1, 0, submatch_empty(st)), st)
+    else
+        0
     end
-    nothing
 end
 
-function match_clause!(x::Tokens{IG,T}, id::Ref{Int}, pos::Ref{Int}, st::ParserState{G,T,I}, ret::Ref{Int}) where {IG,G,I,T}
+function match_clause!(x::Tokens{IG,T}, id::Int, pos::Int, st::ParserState{G,T,I})::MatchResult where {IG,G,I,T}
     len = length(x.tokens)
-    if pos[] - 1 + len <= length(st.input)
-        for (i,t) = enumerate(x.tokens)
-            if t != st.input[pos[]+i-1]
-                return
-            end
-        end
-        ret[] = new_match!(Match(id[], pos[], len, 0, submatch_empty(st)), st)
+    if pos - 1 + len <= length(st.input) && all(st.input[pos:pos-1+len] .== x.tokens)
+        new_match!(Match(id, pos, len, 0, submatch_empty(st)), st)
+    else
+        0
     end
-    nothing
 end
 
-function match_clause!(x::Seq, id::Ref{Int}, orig_pos::Ref{Int}, st::ParserState, ret::Ref{Int})
+function match_clause!(x::Seq, id::Int, orig_pos::Int, st::ParserState)::MatchResult
 
     # check first
-    pos = orig_pos[]
+    pos = orig_pos
     for c in x.children
         mid = lookup_best_match_id!(pos, c, st)
-        mid == 0 && return
+        mid == 0 && return 0
         pos += st.matches[mid].len
     end
 
     # allocate submatches
-    pos = orig_pos[]
+    pos = orig_pos
     seq = submatch_start(st)
     for c in x.children
         mid = lookup_best_match_id!(pos, c, st)
         submatch_record!(st, mid)
         pos += st.matches[mid].len
     end
-    ret[] = new_match!(Match(id[], orig_pos[], pos - orig_pos[], 0, seq), st)
-    nothing
+    new_match!(Match(id, orig_pos, pos - orig_pos, 0, seq), st)
 end
 
-function match_clause!(x::First{G,T}, id::Ref{Int}, pos::Ref{Int}, st::ParserState, ret::Ref{Int}) where {G,T}
+function match_clause!(x::First, id::Int, pos::Int, st::ParserState)::MatchResult
     for (i, c) in enumerate(x.children)
-        mid = lookup_best_match_id!(pos[], c, st)
+        mid = lookup_best_match_id!(pos, c, st)
         if mid != 0
-            ret[] = new_match!(
-                Match(id[], pos[], st.matches[mid].len, i, submatch_record!(st, mid)),
+            return new_match!(
+                Match(id, pos, st.matches[mid].len, i, submatch_record!(st, mid)),
                 st,
             )
-            return
         end
     end
+    0
 end
 
-function match_clause!(x::FollowedBy, id::Ref{Int}, pos::Ref{Int}, st::ParserState, ret::Ref{Int})
-    mid = lookup_best_match_id!(pos[], x.follow, st)
-    if mid != 0
-        ret[] = new_match!(Match(id[], pos[], 0, 1, submatch_record!(st, mid)), st)
-    end
-    nothing
-end
-
-function match_clause!(x::Some, id::Ref{Int}, pos::Ref{Int}, st::ParserState, ret::Ref{Int})
-    mid1 = lookup_best_match_id!(pos[], x.item, st)
-    mid1 == 0 && return
-    mid2 = lookup_best_match_id!(pos[] + st.matches[mid1].len, id[], st)
-    if mid2 == 0
-        ret[] = new_match!(Match(id[], pos[], st.matches[mid1].len, 0, submatch_record!(st, mid1)), st)
+function match_clause!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
+    mid = lookup_best_match_id!(pos, x.follow, st)
+    if mid == 0
+        0
     else
-        ret[] = new_match!(
+        new_match!(Match(id, pos, 0, 1, submatch_record!(st, mid)), st)
+    end
+end
+
+function match_clause!(x::Some, id::Int, pos::Int, st::ParserState)::MatchResult
+    mid1 = lookup_best_match_id!(pos, x.item, st)
+    mid1 == 0 && return 0
+    mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
+    if mid2 == 0
+        new_match!(Match(id, pos, st.matches[mid1].len, 0, submatch_record!(st, mid1)), st)
+    else
+        new_match!(
             Match(
-                id[],
-                pos[],
+                id,
+                pos,
                 st.matches[mid1].len + st.matches[mid2].len,
                 1,
                 submatch_record!(st, mid1, mid2),
@@ -209,34 +208,31 @@ function match_clause!(x::Some, id::Ref{Int}, pos::Ref{Int}, st::ParserState, re
             st,
         )
     end
-    nothing
 end
 
-function match_clause!(x::Many, id::Ref{Int}, pos::Ref{Int}, st::ParserState, ret::Ref{Int})
-    mid1 = lookup_best_match_id!(pos[], x.item, st)
+function match_clause!(x::Many, id::Int, pos::Int, st::ParserState)::MatchResult
+    mid1 = lookup_best_match_id!(pos, x.item, st)
     if mid1 == 0
-        ret[] = match_epsilon!(x, id[], pos[], st)
-        return
+        return match_epsilon!(x, id, pos, st)
     end
-    mid2 = lookup_best_match_id!(pos[] + st.matches[mid1].len, id[], st)
+    mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
     mid2 == 0 && error("Many did not match, but it should have had!")
-    ret[] = new_match!(
+    new_match!(
         Match(
-            id[],
-            pos[],
+            id,
+            pos,
             st.matches[mid1].len + st.matches[mid2].len,
             1,
             submatch_record!(st, mid1, mid2),
         ),
         st,
     )
-    nothing
 end
 
-function match_clause!(x::Tie, id::Ref{Int}, pos::Ref{Int}, st::ParserState, ret::Ref{Int})
-    mid = lookup_best_match_id!(pos[], x.tuple, st)
-    mid == 0 && return
-    ret[] = new_match!(Match(id[], pos[], st.matches[mid].len, 1, submatch_record!(st, mid)), st)
+function match_clause!(x::Tie, id::Int, pos::Int, st::ParserState)::MatchResult
+    mid = lookup_best_match_id!(pos, x.tuple, st)
+    mid == 0 && return 0
+    new_match!(Match(id, pos, st.matches[mid].len, 1, submatch_record!(st, mid)), st)
 end
 
 
