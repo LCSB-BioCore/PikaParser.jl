@@ -112,7 +112,32 @@ function parse(
             match[] = 0
             pclause[] = clause
             ii[] = i
-            match_clause!(grammar.clauses[clause], pclause, ii, st, match)
+            cls = grammar.clauses[clause]
+            if cls isa Token{Int,T}
+                match_clause!(cls, pclause, ii, st, match)
+            elseif cls isa Tokens{Int,T}
+                match_clause!(cls, pclause, ii, st, match)
+            elseif cls isa Satisfy{Int,T}
+                match_clause!(cls, pclause, ii, st, match)
+            elseif cls isa Scan{Int,T}
+                match_clause!(cls, pclause, ii, st, match)
+            elseif cls isa Epsilon{Int,T}
+                match_clause!(cls, pclause, ii, st, match)
+            elseif cls isa Fail{Int,T}
+                match_clause!(cls, pclause, ii, st, match)
+            elseif cls isa Seq{Int,T}
+                match_clause!(cls, pclause, ii, st, match)
+            elseif cls isa First{Int,T}
+                match_clause!(cls, pclause, ii, st, match)
+            elseif cls isa Many{Int,T}
+                match_clause!(cls, pclause, ii, st, match)
+            elseif cls isa Some{Int,T}
+                match_clause!(cls, pclause, ii, st, match)
+            elseif cls isa Tie{Int,T}
+                match_clause!(cls, pclause, ii, st, match)
+            else
+                match_clause!(cls, pclause, ii, st, match)
+            end
             add_match!(i, clause, match[], st)
         end
     end
