@@ -244,6 +244,15 @@ end
 match_epsilon!(x::Clause, id::Int, pos::Int, st::ParserState) =
     new_match!(Match(id, pos, 0, 0, submatch_empty(st)), st)
 
+function match_epsilon(x::FollowedBy, id::Int, pos::Int, st::ParserState)
+    mid = lookup_best_match_id!(pos[], x.follow, st)
+    if mid != 0
+        new_match!(Match(id, pos, 0, 1, submatch_record!(st, mid)), st)
+    else
+        0
+    end
+end
+
 function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)
     # This might technically cause infinite recursion, byt a cycle of
     # NotFollowedBy clauses is disallowed by the error thrown by
