@@ -81,7 +81,7 @@ function parse(
     input::I,
     fast_match = nothing,
 )::ParserState{G,T,I} where {G,T,I<:AbstractVector{T}}
-    st = ParserState(grammar, PikaQueue(length(grammar.clauses)), Match[], 0, Int[], input)
+    st = ParserState{G,T,I}(grammar, PikaQueue(length(grammar.clauses)), Match[], 0, Int[], input)
 
     # a queue pre-filled with terminal matches (used so that we don't need to refill it manually everytime)
     terminal_q = PikaQueue(length(grammar.clauses))
