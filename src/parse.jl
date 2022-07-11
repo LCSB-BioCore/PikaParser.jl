@@ -32,6 +32,8 @@ function add_match!(pos::Int, clause::Int, match::Int, st::ParserState)
             push!(st.q, seed)
         end
     end
+
+    nothing
 end
 
 """
@@ -84,6 +86,9 @@ function parse(
     # a queue pre-filled with terminal matches (used so that we don't need to refill it manually everytime)
     terminal_q = PikaQueue(length(grammar.clauses))
     reset!(terminal_q, grammar.terminals)
+    match = Ref{Int}(0)
+    pclause = Ref{Int}(0)
+    ii = Ref{Int}(0)
 
     for i in reverse(eachindex(input))
         if isnothing(fast_match)
@@ -104,34 +109,36 @@ function parse(
         end
         while !isempty(st.q)
             clause = pop!(st.q)
+            match[] = 0
+            pclause[] = clause
+            ii[] = i
             cls = grammar.clauses[clause]
-            match = 0
             if cls isa Token{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, pclause, ii, st, match)
             elseif cls isa Tokens{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, pclause, ii, st, match)
             elseif cls isa Satisfy{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, pclause, ii, st, match)
             elseif cls isa Scan{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, pclause, ii, st, match)
             elseif cls isa Epsilon{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, pclause, ii, st, match)
             elseif cls isa Fail{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, pclause, ii, st, match)
             elseif cls isa Seq{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, pclause, ii, st, match)
             elseif cls isa First{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, pclause, ii, st, match)
             elseif cls isa Many{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, pclause, ii, st, match)
             elseif cls isa Some{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, pclause, ii, st, match)
             elseif cls isa Tie{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, pclause, ii, st, match)
             else
-                match = match_clause!(cls, clause, i, st)::MatchResult
+                match_clause!(cls, pclause, ii, st, match)
             end
-            add_match!(i, clause, match, st)
+            add_match!(i, clause, match[], st)
         end
     end
 
