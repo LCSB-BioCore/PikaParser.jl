@@ -18,7 +18,7 @@ Build a [`Scan`](@ref) clause. Translate to strongly typed grammar with [`flatte
 # Example
 
     # rule to match a pair of equal tokens
-    scan(m -> m[1] == m[2] ? 2 : nothing)
+    scan(m -> m[1] == m[2] ? 2 : -1)
 """
 scan(f::Function) = Scan{Any,Any}(f)
 
