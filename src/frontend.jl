@@ -31,7 +31,7 @@ Build a [`Token`](@ref) clause. Translate to strongly typed grammar with [`flatt
 
     token('a')
 """
-function token(x::T) where T
+function token(x::T) where {T}
     Token{Any,T}(x)
 end
 
@@ -44,7 +44,7 @@ Build a [`Tokens`](@ref) clause. Translate to strongly typed grammar with [`flat
 
     tokens(collect("keyword"))
 """
-function tokens(xs::AbstractVector{T}) where T
+function tokens(xs::AbstractVector{T}) where {T}
     Tokens{Any,T}(xs)
 end
 
@@ -83,7 +83,7 @@ Build a [`Seq`](@ref) clause. Translate to strongly typed grammar with [`flatten
 
     digit_in_parents = seq(token('('), :digit, token(')'))
 """
-seq(args...) = Seq{Any, Any}(collect(args))
+seq(args...) = Seq{Any,Any}(collect(args))
 
 """
 $(TYPEDSIGNATURES)
@@ -94,7 +94,7 @@ Build a [`First`](@ref) clause. Translate to strongly typed grammar with [`flatt
 
     first(:something, :fallback, :fallback2)
 """
-first(args...) = First{Any, Any}(collect(args))
+first(args...) = First{Any,Any}(collect(args))
 
 """
 $(TYPEDSIGNATURES)
@@ -105,7 +105,7 @@ Build a [`NotFollowedBy`](@ref) clause. Translate to strongly typed grammar with
 
     seq(not_followed_by(tokens(collect("reservedWord"))), :identifier)
 """
-function not_followed_by(x::G) where G
+function not_followed_by(x::G) where {G}
     NotFollowedBy{G,Any}(x)
 end
 
@@ -118,7 +118,7 @@ Build a [`FollowedBy`](@ref) clause. Translate to strongly typed grammar with [`
 
     seq(:digits, followed_by(:whitespace))
 """
-function followed_by(x::G) where G
+function followed_by(x::G) where {G}
     FollowedBy{G,Any}(x)
 end
 
@@ -131,7 +131,7 @@ Build a [`Some`](@ref) clause. Translate to strongly typed grammar with [`flatte
 
     some(satisfy(isspace))
 """
-function some(x::G) where G
+function some(x::G) where {G}
     Some{G,Any}(x)
 end
 
@@ -144,7 +144,7 @@ Build a [`Many`](@ref) clause. Translate to strongly typed grammar with [`flatte
 
     seq(:quote, many(:quote_contents), :quote)
 """
-function many(x::G) where G
+function many(x::G) where {G}
     Many{G,Any}(x)
 end
 
@@ -157,7 +157,7 @@ Build a [`Tie`](@ref) clause. Translate to strongly typed grammar with [`flatten
 
     :alternating_A_and_B => tie(many(seq(:A, :B)))
 """
-function tie(x::G) where G
+function tie(x::G) where {G}
     Tie{G,Any}(x)
 end
 
@@ -283,7 +283,7 @@ function flatten(
     rules::Dict{G},
     tokentype::DataType,
     childlabel::Function = (rid, idx) -> Symbol(rid, :-, idx),
-) where G
+) where {G}
     todo = Pair{G,Clause}[r for r in rules]
     res = Dict{G,Clause{G,tokentype}}()
 

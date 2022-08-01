@@ -49,7 +49,8 @@ rechildren(x::Epsilon, t::DataType, v::Vector) = Epsilon{valtype(v),t}()
 rechildren(x::Fail, t::DataType, v::Vector) = Fail{valtype(v),t}()
 rechildren(x::Seq, t::DataType, v::Vector) = Seq{valtype(v),t}(v)
 rechildren(x::First, t::DataType, v::Vector) = First{valtype(v),t}(v)
-rechildren(x::NotFollowedBy, t::DataType, v::Vector) = NotFollowedBy{valtype(v),t}(Base.first(v))
+rechildren(x::NotFollowedBy, t::DataType, v::Vector) =
+    NotFollowedBy{valtype(v),t}(Base.first(v))
 rechildren(x::FollowedBy, t::DataType, v::Vector) = FollowedBy{valtype(v),t}(Base.first(v))
 rechildren(x::Some, t::DataType, v::Vector) = Some{valtype(v),t}(Base.first(v))
 rechildren(x::Many, t::DataType, v::Vector) = Many{valtype(v),t}(Base.first(v))
@@ -94,9 +95,8 @@ better_match_than(::First, new::Match, old::Match) =
 better_match_than(::Clause, new::Match, old::Match) = new.len > old.len
 
 
-can_match_epsilon(x::Union{Satisfy,Scan,Token,Tokens}, ::Vector{Bool}) = false
+can_match_epsilon(x::Union{Satisfy,Scan,Token,Tokens,Fail}, ::Vector{Bool}) = false
 can_match_epsilon(x::Epsilon, ::Vector{Bool}) = true
-can_match_epsilon(x::Fail, ::Vector{Bool}) = false
 can_match_epsilon(x::Seq, ch::Vector{Bool}) = all(ch)
 can_match_epsilon(x::First, ch::Vector{Bool}) =
     isempty(ch) ? false :
@@ -130,7 +130,12 @@ function match_clause!(x::Scan, id::Int, pos::Int, st::ParserState)::MatchResult
     end
 end
 
-function match_clause!(x::Token{IG,T}, id::Int, pos::Int, st::ParserState{G,T,I})::MatchResult where {IG,G,I,T}
+function match_clause!(
+    x::Token{IG,T},
+    id::Int,
+    pos::Int,
+    st::ParserState{G,T,I},
+)::MatchResult where {IG,G,I,T}
     if st.input[pos] == x.token
         new_match!(Match(id, pos, 1, 0, submatch_empty(st)), st)
     else
@@ -138,7 +143,12 @@ function match_clause!(x::Token{IG,T}, id::Int, pos::Int, st::ParserState{G,T,I}
     end
 end
 
-function match_clause!(x::Tokens{IG,T}, id::Int, pos::Int, st::ParserState{G,T,I})::MatchResult where {IG,G,I,T}
+function match_clause!(
+    x::Tokens{IG,T},
+    id::Int,
+    pos::Int,
+    st::ParserState{G,T,I},
+)::MatchResult where {IG,G,I,T}
     len = length(x.tokens)
     if pos - 1 + len <= length(st.input) && all(st.input[pos:pos-1+len] .== x.tokens)
         new_match!(Match(id, pos, len, 0, submatch_empty(st)), st)
@@ -272,13 +282,7 @@ function UserMatch(
     submatches::Vector{Int},
     st::ParserState{G,T,I},
 ) where {G,T,I}
-    UserMatch{G,T}(
-        st.grammar.names[id],
-        m.pos,
-        m.len,
-        view_match(st, m),
-        submatches,
-    )
+    UserMatch{G,T}(st.grammar.names[id], m.pos, m.len, view_match(st, m), submatches)
 end
 
 function user_view(::Clause, id::Int, mid::Int, st::ParserState)

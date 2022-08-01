@@ -1,10 +1,18 @@
 
-function lookup_best_match_id!(pos::Int, clause::Int, st::ParserState)::MatchResult
+function lookup_best_match_id!(pos::Int, clause::Int, st::ParserState{G,T,I})::MatchResult where {G,T,I}
     mid = match_find!(st, clause, pos)
-    mid!=0 && return mid
+    mid != 0 && return mid
 
     if st.grammar.can_match_epsilon[clause]
-        return match_epsilon!(st.grammar.clauses[clause], clause, pos, st)
+        cls = st.grammar.clauses[clause]
+        match = 0
+        if cls isa FollowedBy{Int,T}
+            return match_epsilon!(cls, clause, pos, st)
+        elseif cls isa NotFollowedBy{Int,T}
+            return match_epsilon!(cls, clause, pos, st)
+        else
+            return match_epsilon!(cls, clause, pos, st)
+        end
     end
 
     return 0
@@ -20,7 +28,7 @@ function add_match!(pos::Int, clause::Int, match::Int, st::ParserState)
 
     if match != 0
         old = match_find!(st, clause, pos)
-        if old==0 ||
+        if old == 0 ||
            better_match_than(st.grammar.clauses[clause], st.matches[match], st.matches[old])
             match_insert!(st, match)
             updated = true
@@ -79,7 +87,14 @@ function parse(
     input::I,
     fast_match = nothing,
 )::ParserState{G,T,I} where {G,T,I<:AbstractVector{T}}
-    st = ParserState{G,T,I}(grammar, PikaQueue(length(grammar.clauses)), Match[], 0, Int[], input)
+    st = ParserState{G,T,I}(
+        grammar,
+        PikaQueue(length(grammar.clauses)),
+        Match[],
+        0,
+        Int[],
+        input,
+    )
 
     # a queue pre-filled with terminal matches (used so that we don't need to refill it manually everytime)
     terminal_q = PikaQueue(length(grammar.clauses))
@@ -104,8 +119,46 @@ function parse(
         end
         while !isempty(st.q)
             clause = pop!(st.q)
-            #"clause" G T I grammar.clauses[clause]
-            match = match_clause!(grammar.clauses[clause]::Clause{Int,T}, clause, i, st)::MatchResult
+
+            # For whatever reason, Julia inference is unable to find that the
+            # arguments of match_clause! are compatible and causes an ugly
+            # amount of allocation on the calls (basically wrapping Int64s).
+            # Splitting the cases manually prevents that to some (relatively
+            # large) extent. As another optimization, one can pass the integers
+            # around in Ref (as "output arguments"), which prevents wrapping of
+            # the output integer in case the inference can't guess that it's
+            # going to be an integer. (This was the case previously when this
+            # returned Maybe{Int}.)
+            #
+            # This is not optimal by far but I don't really like the "solution"
+            # with Ref{}s. Let's hope that there will be a solution to force
+            # the type inference to find that this dispatch is in fact very
+            # regular and almost trivial.
+            cls = grammar.clauses[clause]
+            match = 0
+            if cls isa Token{Int,T}
+                match = match_clause!(cls, clause, i, st)
+            elseif cls isa Tokens{Int,T}
+                match = match_clause!(cls, clause, i, st)
+            elseif cls isa Satisfy{Int,T}
+                match = match_clause!(cls, clause, i, st)
+            elseif cls isa Scan{Int,T}
+                match = match_clause!(cls, clause, i, st)
+            elseif cls isa Seq{Int,T}
+                match = match_clause!(cls, clause, i, st)
+            elseif cls isa First{Int,T}
+                match = match_clause!(cls, clause, i, st)
+            elseif cls isa FollowedBy{Int,T}
+                match = match_clause!(cls, clause, i, st)
+            elseif cls isa Many{Int,T}
+                match = match_clause!(cls, clause, i, st)
+            elseif cls isa Some{Int,T}
+                match = match_clause!(cls, clause, i, st)
+            elseif cls isa Tie{Int,T}
+                match = match_clause!(cls, clause, i, st)
+            else
+                match = match_clause!(cls, clause, i, st)
+            end
             add_match!(i, clause, match, st)
         end
     end

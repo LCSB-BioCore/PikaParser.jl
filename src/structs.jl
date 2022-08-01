@@ -252,7 +252,17 @@ end
 
 Match(c::Int, p::Int, l::Int, o::Int, s::Int) = Match(c, p, l, o, s, 0, 0, 0)
 
-Match(m::Match; clause::Int=m.clause, pos::Int=m.pos, len::Int=m.len, option_idx::Int=m.option_idx, submatches::Int=m.submatches, left::Int=m.left, right::Int=m.right, parent::Int=m.parent) = Match(clause, pos, len, option_idx, submatches, left, right, parent)
+Match(
+    m::Match;
+    clause::Int = m.clause,
+    pos::Int = m.pos,
+    len::Int = m.len,
+    option_idx::Int = m.option_idx,
+    submatches::Int = m.submatches,
+    left::Int = m.left,
+    right::Int = m.right,
+    parent::Int = m.parent,
+) = Match(clause, pos, len, option_idx, submatches, left, right, parent)
 
 """
 $(TYPEDEF)
