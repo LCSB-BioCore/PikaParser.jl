@@ -27,6 +27,8 @@ Often it is better to use convenience functions for rule construction, such as [
 """
 abstract type Clause{G,T} end
 
+abstract type Terminal{G,T} <: Clause{G,T} end
+
 """
 $(TYPEDEF)
 
@@ -36,7 +38,7 @@ function returns `true`.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Satisfy{G,T} <: Clause{G,T}
+struct Satisfy{G,T} <: Terminal{G,T}
     match::Function
 end
 
@@ -47,12 +49,12 @@ A single terminal, possibly made out of multiple input tokens.
 
 Given the input stream and a position in it, the `match` function scans the
 input forward and returns the length of the terminal starting at the position.
-In case there's no match, it returns `nothing`.
+In case there's no match, it returns a negative value.
 
 # Fields
 $(TYPEDFIELDS)
 """
-struct Scan{G,T} <: Clause{G,T}
+struct Scan{G,T} <: Terminal{G,T}
     match::Function
 end
 
@@ -64,7 +66,7 @@ A single token equal to `match`.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Token{G,T} <: Clause{G,T}
+struct Token{G,T} <: Terminal{G,T}
     token::T
 end
 
@@ -76,7 +78,7 @@ A series of tokens equal to `match`.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Tokens{G,T} <: Clause{G,T}
+struct Tokens{G,T} <: Terminal{G,T}
     tokens::Vector{T}
 end
 

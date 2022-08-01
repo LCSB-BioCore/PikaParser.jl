@@ -44,7 +44,7 @@ end
 @testset "Multiple token matches" begin
     rules = Dict(
         3 => P.first(
-            11 => P.scan(toks -> length(toks) >= 2 && toks[1] == toks[2] ? 2 : nothing),
+            11 => P.scan(toks -> length(toks) >= 2 && toks[1] == toks[2] ? 2 : -1),
             P.tokens([:one, :two, :three]),
         ),
     )

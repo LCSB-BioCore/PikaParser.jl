@@ -1,5 +1,9 @@
 
-function lookup_best_match_id!(pos::Int, clause::Int, st::ParserState{G,T,I})::MatchResult where {G,T,I}
+function lookup_best_match_id!(
+    pos::Int,
+    clause::Int,
+    st::ParserState{G,T,I},
+)::MatchResult where {G,T,I}
     mid = match_find!(st, clause, pos)
     mid != 0 && return mid
 

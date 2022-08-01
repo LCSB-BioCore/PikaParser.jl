@@ -3,7 +3,7 @@
 # Clause implementation
 #
 
-isterminal(x::Union{Satisfy,Scan,Token,Tokens}) = true
+isterminal(x::Terminal) = true
 isterminal(x::Clause) = false
 
 
@@ -113,47 +113,42 @@ can_match_epsilon(x::Tie, ch::Vector{Bool}) = ch[1]
 # Clause matching
 #
 
-function match_clause!(x::Satisfy, id::Int, pos::Int, st::ParserState)::MatchResult
-    if x.match(st.input[pos])
-        new_match!(Match(id, pos, 1, 0, submatch_empty(st)), st)
-    else
-        0
-    end
+function match_terminal(x::Satisfy{G,T}, input::Vector{T}, pos::Int)::Int where {G,T}
+    return x.match(input[pos]) ? 1 : -1
 end
 
-function match_clause!(x::Scan, id::Int, pos::Int, st::ParserState)::MatchResult
-    match_len = x.match(view(st.input, pos:length(st.input)))
-    if !isnothing(match_len)
-        new_match!(Match(id, pos, match_len, 0, submatch_empty(st)), st)
-    else
-        0
-    end
+function match_terminal(x::Scan{G,T}, input::Vector{T}, pos::Int)::Int where {G,T}
+    return x.match(view(input, pos:length(input)))
 end
 
-function match_clause!(
-    x::Token{IG,T},
-    id::Int,
-    pos::Int,
-    st::ParserState{G,T,I},
-)::MatchResult where {IG,G,I,T}
-    if st.input[pos] == x.token
-        new_match!(Match(id, pos, 1, 0, submatch_empty(st)), st)
-    else
-        0
-    end
+function match_terminal(x::Token{G,T}, input::Vector{T}, pos::Int)::Int where {G,T}
+    return x.token == input[pos] ? 1 : -1
 end
 
-function match_clause!(
-    x::Tokens{IG,T},
-    id::Int,
-    pos::Int,
-    st::ParserState{G,T,I},
-)::MatchResult where {IG,G,I,T}
+function match_terminal(x::Tokens{G,T}, input::Vector{T}, pos::Int)::Int where {G,T}
     len = length(x.tokens)
-    if pos - 1 + len <= length(st.input) && all(st.input[pos:pos-1+len] .== x.tokens)
-        new_match!(Match(id, pos, len, 0, submatch_empty(st)), st)
+    if pos + len - 1 <= length(input)
+        for (i, t) in enumerate(x.tokens)
+            if t != input[pos+i-1]
+                return -1
+            end
+        end
+        return len
+    end
+    return -1
+end
+
+function match_clause!(
+    x::TT,
+    id::Int,
+    pos::Int,
+    st::ParserState{G,T,I},
+)::MatchResult where {G,T,I,IG,TT<:Terminal{IG,T}}
+    len = match_terminal(x, st.input, pos)
+    if len < 0
+        return 0
     else
-        0
+        new_match!(Match(id, pos, len, 0, submatch_empty(st)), st)
     end
 end
 
