@@ -83,3 +83,18 @@ end
         sepdigit(sep(","), digit("5")),
     ))
 end
+
+@testset "flatten complains about duplicates" begin
+    rules = Dict(:x => P.seq(:x => P.fail))
+
+    @test_throws DomainError P.flatten(rules, Char)
+end
+
+@testset "corner-case epsilon matches" begin
+    rules = Dict(:x => P.followed_by(P.epsilon))
+
+    p = P.parse(P.flatten(rules, Char), "whatever")
+
+    @test P.find_match_at!(p, :x, 1) != 0
+    @test P.find_match_at!(p, :x, 8) != 0
+end

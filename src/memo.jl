@@ -19,13 +19,9 @@ function submatch_record!(st::ParserState, mid1::Int, mid2::Int)
     ret
 end
 
-submatch_rollback!(st::ParserState, start::Int) = resize!(st.submatches, start - 1)
-
 function submatches(st::ParserState, mid::Int)
     b = st.matches[mid].submatches
-    if b == 0 || b > length(st.submatches)
-        return view(st.submatches, 1:0)
-    end
+    (b == 0 || b > length(st.submatches)) && return view(st.submatches, 1:0)
     e = mid < length(st.matches) ? st.matches[mid+1].submatches - 1 : length(st.submatches)
     view(st.submatches, b:e)
 end
@@ -50,8 +46,6 @@ function adjust_child!(st::ParserState, mid::Int, old::Int, new::Int)
         adjust_match!(st, mid, left = new)
     elseif m.right == old
         adjust_match!(st, mid, right = new)
-    else
-        error("child missed!")
     end
 end
 

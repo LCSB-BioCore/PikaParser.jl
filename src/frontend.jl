@@ -289,9 +289,9 @@ function flatten(
 
     while !isempty(todo)
         rid, clause = pop!(todo)
-        clause isa Clause || error(DomainError(rid => clause, "unsupported clause type"))
+        clause isa Clause || throw(DomainError(rid => clause, "unsupported clause type"))
         if haskey(res, rid)
-            error(DomainError(rid, "duplicate rule definition"))
+            throw(DomainError(rid, "duplicate rule definition"))
         end
         tmp = rechildren(
             clause,
@@ -308,7 +308,7 @@ function flatten(
                         push!(todo, ch)
                         Base.first(ch)
                     else
-                        error(DomainError(ch, "unsupported clause contents"))
+                        throw(DomainError(ch, "unsupported clause contents"))
                     end
                 ) for (i, ch) in enumerate(child_clauses(clause))
             ],

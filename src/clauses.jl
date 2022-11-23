@@ -178,25 +178,22 @@ function match_clause!(x::Seq, id::Int, orig_pos::Int, st::ParserState)::MatchRe
 end
 
 function match_clause!(x::First, id::Int, pos::Int, st::ParserState)::MatchResult
+    res = 0
     for (i, c) in enumerate(x.children)
         mid = lookup_best_match_id!(pos, c, st)
-        if mid != 0
-            return new_match!(
-                Match(id, pos, st.matches[mid].len, i, submatch_record!(st, mid)),
-                st,
-            )
-        end
+        mid == 0 && continue
+        res = new_match!(
+            Match(id, pos, st.matches[mid].len, i, submatch_record!(st, mid)),
+            st,
+        )
+        break
     end
-    0
+    return res
 end
 
 function match_clause!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
     mid = lookup_best_match_id!(pos, x.follow, st)
-    if mid == 0
-        0
-    else
-        new_match!(Match(id, pos, 0, 1, submatch_record!(st, mid)), st)
-    end
+    mid == 0 ? 0 : new_match!(Match(id, pos, 0, 1, submatch_record!(st, mid)), st)
 end
 
 function match_clause!(x::Some, id::Int, pos::Int, st::ParserState)::MatchResult
@@ -225,7 +222,7 @@ function match_clause!(x::Many, id::Int, pos::Int, st::ParserState)::MatchResult
         return match_epsilon!(x, id, pos, st)
     end
     mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
-    mid2 == 0 && error("Many did not match, but it should have had!")
+    @assert mid2 != 0 "Many did not match, but it should have had!"
     new_match!(
         Match(
             id,
@@ -245,6 +242,9 @@ function match_clause!(x::Tie, id::Int, pos::Int, st::ParserState)::MatchResult
 end
 
 
+#
+# Epsilon matches
+#
 
 match_epsilon!(x::Clause, id::Int, pos::Int, st::ParserState) =
     new_match!(Match(id, pos, 0, 0, submatch_empty(st)), st)

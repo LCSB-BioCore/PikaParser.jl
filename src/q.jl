@@ -46,26 +46,19 @@ function Base.pop!(q::PikaQueue)
             l = q.q[L]
             r = q.q[R]
             if l < r
-                if q.q[i] <= l
-                    break
-                end
+                q.q[i] <= l && break
                 swap!(q, i, L)
                 i = L
             else
-                if q.q[i] <= r
-                    break
-                end
+                q.q[i] <= r && break
                 swap!(q, i, R)
                 i = R
             end
+            continue
         elseif L <= q.n
-            if q.q[i] > q.q[L]
-                swap!(q, i, L)
-            end
-            break
-        else
-            break
+            q.q[i] > q.q[L] && swap!(q, i, L)
         end
+        break
     end
 
     return Int(ret)
@@ -82,9 +75,7 @@ function Base.push!(q::PikaQueue, x::Int)
     # bubble up
     while i > 1
         P = i >> 1
-        if q.q[P] < q.q[i]
-            break
-        end
+        q.q[P] < q.q[i] && break
         swap!(q, P, i)
         i = P
     end
