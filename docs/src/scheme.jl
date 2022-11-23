@@ -75,20 +75,17 @@ while next_pos <= lastindex(p.input)
     global next_pos
     pos = next_pos
     mid = 0
-    # try to find a match
-    while pos <= lastindex(p.input)
+    while pos <= lastindex(p.input) # try to find a match
         mid = P.find_match_at!(p, :top, pos)
         mid != 0 && break
         pos += 1
     end
-    # if we skipped something, report it
-    pos > next_pos && @error "Got parsing problems" p.input[next_pos:prevind(p.input, pos)]
-    # in case we have found a match, print its AST
-    mid == 0 && break
+    pos > next_pos && # if we skipped something, report it
+        @error "Got parsing problems" p.input[next_pos:prevind(p.input, pos)]
+    mid == 0 && break # in case we have found a match, print its AST
     value = P.traverse_match(p, mid, fold = fold_scheme)
     @info "Got a command" value
-    # skip the whole match and continue
-    m = p.matches[mid]
+    m = p.matches[mid] # skip the whole match and continue
     next_pos = m.pos + m.len
 end
 
