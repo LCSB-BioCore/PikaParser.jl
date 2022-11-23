@@ -61,7 +61,7 @@ p = P.parse(P.make_grammar([:top], P.flatten(rules)), collect("""
 # The memo table is conveniently ordered by match position.
 
 top_matches =
-    [(key.pos, mid) for (key, mid) = p.memo if p.grammar.names[key.clause] == :top]
+    [(key.pos, mid) for (key, mid) in p.memo if p.grammar.names[key.clause] == :top]
 
 # Prepare a folding function:
 

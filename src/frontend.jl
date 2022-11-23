@@ -242,7 +242,7 @@ macro precedences(labeller, same::Symbol, next::Symbol, block)
                 labeller,
                 [
                     Expr(:->, Expr(:tuple, same, next), r) for
-                    r = block.args if !(r isa LineNumberNode)
+                    r in block.args if !(r isa LineNumberNode)
                 ]...,
             ),
         ),
