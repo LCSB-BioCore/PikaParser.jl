@@ -203,7 +203,7 @@ parsing terminals where another terminal was already parsed successfully.
 function lex(g::Grammar{G,T}, input::I)::Vector{Vector{Tuple{G,Int}}} where {G,T,I}
     q = PikaQueue(lastindex(input))
     push!(q, 1)
-    res = fill(Vector{Tuple{G,Int}}(), lastindex(input))
+    res = [Vector{Tuple{G,Int}}() for _ = 1:lastindex(input)] # tricky: do not fill()
     while !isempty(q)
         pos = pop!(q)
         for tidx in g.terminals
