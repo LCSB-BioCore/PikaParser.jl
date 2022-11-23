@@ -123,7 +123,7 @@ evaluate the expression as follows:
 ```julia
 P.traverse_match(p, P.find_match_at!(p, :expr, 1),
     fold = (m, p, subvals) ->
-        m.rule == :digits ? parse(Int, String(m.view)) :
+        m.rule == :digits ? parse(Int, m.view) :
         m.rule == :expr ? subvals[1] :
         m.rule == :parens ? subvals[2] :
         m.rule == :plusexpr ? subvals[1] + subvals[3] :
