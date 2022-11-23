@@ -1,6 +1,10 @@
 
 # PikaParser.jl
 
+| Build status | Documentation |
+|:---:|:---:|
+| ![CI status](https://github.com/LCSB-BioCore/PikaParser.jl/workflows/CI/badge.svg?branch=master) [![codecov](https://codecov.io/gh/LCSB-BioCore/PikaParser.jl/branch/master/graph/badge.svg?token=A2ui7exGIH)](https://codecov.io/gh/LCSB-BioCore/PikaParser.jl) | [![stable documentation](https://img.shields.io/badge/docs-stable-blue)](https://lcsb-biocore.github.io/PikaParser.jl/stable) [![dev documentation](https://img.shields.io/badge/docs-dev-cyan)](https://lcsb-biocore.github.io/PikaParser.jl/dev) |
+
 A simple straightforward implementation of PikaParser in pure Julia, following
 the specification by Luke A. D. Hutchison (see
 https://github.com/lukehutch/pikaparser).
