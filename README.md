@@ -47,7 +47,7 @@ rules = Dict(
 
 g = P.make_grammar(
     [:expr], # the top-level rule
-    P.flatten(rules),
+    P.flatten(rules, Char), # process the rules into a single level and specialize them for crunching Chars
 )
 ```
 
@@ -74,7 +74,7 @@ P.find_match_at!(p, :expr, 1)
 ```
 ...which returns an index in the match table (if found), such as `45`.
 
-You can have a look at the match. `p.matches[45]` should return:
+You can have a look at the match: `p.matches[45]` should return:
 ```julia
 PikaParser.Match(10, 1, 13, 2, [44])
 ```
