@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Example: Parsing JSON · PikaParser.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">PikaParser.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">README</a></li><li class="is-active"><a class="tocitem" href>Example: Parsing JSON</a></li><li><a class="tocitem" href="../scheme/">Example: Parsing Scheme</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Example: Parsing JSON</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Example: Parsing JSON</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/LCSB-BioCore/PikaParser.jl/blob/master/docs/src/json.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Example:-Parsing-JSON"><a class="docs-heading-anchor" href="#Example:-Parsing-JSON">Example: Parsing JSON</a><a id="Example:-Parsing-JSON-1"></a><a class="docs-heading-anchor-permalink" href="#Example:-Parsing-JSON" title="Permalink"></a></h1><p>Here we prepare a parser of a very small subset of JSON.</p><p>The main features of the parser include:</p><ul><li>handling sequences with separators</li><li>handling string escapes</li><li>building native Julia data objects using a dictionary of handlers</li></ul><p>The simplifications that we choose not to handle are the following:</p><ul><li>we do not support space between tokens (you can pipe your json through <code>jq -c .</code> to remove unnecessary spaces)</li><li>support for numbers is very ad-hoc, <code>Float64</code>-only</li><li>the escape sequences allowed in strings are rather incomplete</li></ul><pre><code class="language-julia hljs">import PikaParser as P
+
+rules = Dict(
+    :t =&gt; P.tokens(&quot;true&quot;),
+    :f =&gt; P.tokens(&quot;false&quot;),
+    :null =&gt; P.tokens(&quot;null&quot;),
+    :digit =&gt; P.satisfy(isdigit),
+    :number =&gt; P.seq(
+        P.first(P.token(&#39;-&#39;), P.epsilon),
+        P.some(:digit),
+        P.first(P.seq(P.token(&#39;.&#39;), P.many(:digit)), P.epsilon),
+    ),
+    :quote =&gt; P.token(&#39;&quot;&#39;),
+    :esc =&gt; P.token(&#39;\\&#39;),
+    :string =&gt; P.seq(:quote, :instrings =&gt; P.many(:instring), :quote),
+    :instring =&gt; P.first(
+        :escaped =&gt; P.seq(:esc, P.first(:esc, :quote)),
+        :notescaped =&gt; P.satisfy(x -&gt; x != &#39;&quot;&#39; &amp;&amp; x != &#39;\\&#39;),
+    ),
+    :array =&gt; P.seq(P.token(&#39;[&#39;), P.first(:inarray, P.epsilon), P.token(&#39;]&#39;)),
+    :sep =&gt; P.token(&#39;,&#39;),
+    :inarray =&gt; P.tie(P.seq(P.seq(:json), P.many(:separray =&gt; P.seq(:sep, :json)))),
+    :obj =&gt; P.seq(P.token(&#39;{&#39;), P.first(:inobj, P.epsilon), P.token(&#39;}&#39;)),
+    :pair =&gt; P.seq(:string, P.token(&#39;:&#39;), :json),
+    :inobj =&gt; P.tie(P.seq(P.seq(:pair), P.many(:sepobj =&gt; P.seq(:sep, :pair)))),
+    :json =&gt; P.first(:obj, :array, :string, :number, :t, :f, :null),
+);</code></pre><p>To manage the folding easily, we keep the fold functions in a data structure with the same order as <code>rules</code>:</p><pre><code class="language-julia hljs">folds = Dict(
+    :t =&gt; (v, s) -&gt; true,
+    :f =&gt; (v, s) -&gt; false,
+    :null =&gt; (v, s) -&gt; nothing,
+    :number =&gt; (v, s) -&gt; parse(Float64, v),
+    :quote =&gt; (v, s) -&gt; v[1],
+    :esc =&gt; (v, s) -&gt; v[1],
+    :escaped =&gt; (v, s) -&gt; s[2],
+    :notescaped =&gt; (v, s) -&gt; v[1],
+    :string =&gt; (v, s) -&gt; String(Char.(s[2])),
+    :instrings =&gt; (v, s) -&gt; s,
+    :array =&gt; (v, s) -&gt; s[2],
+    :inarray =&gt; (v, s) -&gt; s,
+    :separray =&gt; (v, s) -&gt; s[2],
+    :obj =&gt; (v, s) -&gt; Dict{String,Any}(isnothing(s[2]) ? [] : s[2]),
+    :pair =&gt; (v, s) -&gt; (s[1] =&gt; s[3]),
+    :sepobj =&gt; (v, s) -&gt; s[2],
+    :inobj =&gt; (v, s) -&gt; s,
+);
+
+default_fold(v, subvals) = isempty(subvals) ? nothing : subvals[1]
+
+g = P.make_grammar([:json], P.flatten(rules, Char));</code></pre><p>Let&#39;s parse a simple JSONish string that demonstrates most of the rules:</p><pre><code class="language-julia hljs">input = &quot;&quot;&quot;{&quot;something&quot;:123,&quot;other&quot;:false,&quot;refs&quot;:[1,-2.345,[],{},true,false,null,[1,2,3,&quot;haha&quot;],{&quot;is\\&quot;Finished\\&quot;&quot;:true}]}&quot;&quot;&quot;;
+
+p = P.parse(g, input);</code></pre><p>Let&#39;s build a Julia JSON-like structure:</p><pre><code class="language-julia hljs">result = P.traverse_match(
+    p,
+    P.find_match_at!(p, :json, 1),
+    fold = (m, p, s) -&gt; get(folds, m.rule, default_fold)(m.view, s),
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Dict{String, Any} with 3 entries:
+  &quot;other&quot;     =&gt; false
+  &quot;something&quot; =&gt; 123.0
+  &quot;refs&quot;      =&gt; Any[1.0, -2.345, nothing, Dict{String, Any}(), true, false, no…</code></pre><p>Detail:</p><pre><code class="language-julia hljs">result[&quot;refs&quot;]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">9-element Vector{Any}:
+     1.0
+    -2.345
+      nothing
+      Dict{String, Any}()
+  true
+ false
+      nothing
+      Any[1.0, 2.0, 3.0, &quot;haha&quot;]
+      Dict{String, Any}(&quot;is\&quot;Finished\&quot;&quot; =&gt; true)</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« README</a><a class="docs-footer-nextpage" href="../scheme/">Example: Parsing Scheme »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Wednesday 23 November 2022 23:54">Wednesday 23 November 2022</span>. Using Julia version 1.8.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
