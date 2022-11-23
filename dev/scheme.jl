@@ -42,7 +42,9 @@ rules = Dict(
 # Let's test the grammar on a piece of source code that contains lots of
 # whitespace and some errors.
 
-p = P.parse(P.make_grammar([:top], P.flatten(rules)), collect("""
+p = P.parse(
+    P.make_grammar([:top], P.flatten(rules, Char)),
+    """
 (plus 1 2 3)
 (minus 1 2(plus 3 2)  ) woohoo extra parenthesis here )
 (complex
@@ -54,20 +56,14 @@ p = P.parse(P.make_grammar([:top], P.flatten(rules)), collect("""
   valid)
 (straight (out (missing(parenthesis error))
 (apply (make-function) (make-data))
-"""));
-
-# To traverse the input, we'll try to find the `top` matches. If the `top`
-# match cannot be found, we will try to match at least something and report it.
-# The memo table is conveniently ordered by match position.
-
-top_matches =
-    [(key.pos, mid) for (key, mid) = p.memo if p.grammar.names[key.clause] == :top]
+""",
+);
 
 # Prepare a folding function:
 
 fold_scheme(m, p, s) =
-    m.rule == :number ? parse(Int, String(m.view)) :
-    m.rule == :ident ? Symbol(String(m.view)) :
+    m.rule == :number ? parse(Int, m.view) :
+    m.rule == :ident ? Symbol(m.view) :
     m.rule == :insexpr ? Expr(:call, :S, s...) :
     m.rule == :sexpr ? s[2] : m.rule == :top ? s[2] : length(s) > 0 ? s[1] : nothing;
 
@@ -75,19 +71,22 @@ fold_scheme(m, p, s) =
 # expect the next match:
 
 next_pos = 1
-for (pos, mid) in top_matches
+while next_pos <= lastindex(p.input)
     global next_pos
-    m = p.matches[mid]
-    if pos < next_pos # this match is a part of another that was already processed
-        continue
+    pos = next_pos
+    mid = 0
+    while pos <= lastindex(p.input) # try to find a match
+        mid = P.find_match_at!(p, :top, pos)
+        mid != 0 && break
+        pos += 1
     end
-    if pos > next_pos # something was not parsed!
-        @warn "Could not parse input, skipping!" unrecognized =
-            String(p.input[next_pos:m.pos-1])
-    end
+    pos > next_pos && # if we skipped something, report it
+        @error "Got parsing problems" p.input[next_pos:prevind(p.input, pos)]
+    mid == 0 && break # in case we have found a match, print its AST
     value = P.traverse_match(p, mid, fold = fold_scheme)
     @info "Got a command" value
-    next_pos = m.pos + m.len # skip behind the match
+    m = p.matches[mid] # skip the whole match and continue
+    next_pos = m.pos + m.len
 end
 
 # We can see that the unparseable parts of input were correctly skipped, while
