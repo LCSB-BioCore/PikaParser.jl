@@ -18,9 +18,9 @@
 import PikaParser as P
 
 rules = Dict(
-    :t => P.tokens(collect("true")),
-    :f => P.tokens(collect("false")),
-    :null => P.tokens(collect("null")),
+    :t => P.tokens("true"),
+    :f => P.tokens("false"),
+    :null => P.tokens("null"),
     :digit => P.satisfy(isdigit),
     :number => P.seq(
         P.first(P.token('-'), P.epsilon),
@@ -49,12 +49,12 @@ folds = Dict(
     :t => (v, s) -> true,
     :f => (v, s) -> false,
     :null => (v, s) -> nothing,
-    :number => (v, s) -> parse(Float64, String(v)),
+    :number => (v, s) -> parse(Float64, v),
     :quote => (v, s) -> v[1],
     :esc => (v, s) -> v[1],
     :escaped => (v, s) -> s[2],
     :notescaped => (v, s) -> v[1],
-    :string => (v, s) -> String(Vector{Char}(s[2])),
+    :string => (v, s) -> String(Char.(s[2])),
     :instrings => (v, s) -> s,
     :array => (v, s) -> s[2],
     :inarray => (v, s) -> s,
@@ -63,16 +63,14 @@ folds = Dict(
     :pair => (v, s) -> (s[1] => s[3]),
     :sepobj => (v, s) -> s[2],
     :inobj => (v, s) -> s,
-)
+);
 
 default_fold(v, subvals) = isempty(subvals) ? nothing : subvals[1]
 
-g = P.make_grammar([:json], P.flatten(rules));
+g = P.make_grammar([:json], P.flatten(rules, Char));
 
 # Let's parse a simple JSONish string that demonstrates most of the rules:
-input = collect(
-    """{"something":123,"other":false,"refs":[1,-2.345,[],{},true,false,null,[1,2,3,"haha"],{"is\\"Finished\\"":true}]}""",
-);
+input = """{"something":123,"other":false,"refs":[1,-2.345,[],{},true,false,null,[1,2,3,"haha"],{"is\\"Finished\\"":true}]}""";
 
 p = P.parse(g, input);
 

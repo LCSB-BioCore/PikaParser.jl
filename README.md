@@ -1,6 +1,10 @@
 
 # PikaParser.jl
 
+| Build status | Documentation |
+|:---:|:---:|
+| ![CI status](https://github.com/LCSB-BioCore/PikaParser.jl/workflows/CI/badge.svg?branch=master) [![codecov](https://codecov.io/gh/LCSB-BioCore/PikaParser.jl/branch/master/graph/badge.svg?token=A2ui7exGIH)](https://codecov.io/gh/LCSB-BioCore/PikaParser.jl) | [![stable documentation](https://img.shields.io/badge/docs-stable-blue)](https://lcsb-biocore.github.io/PikaParser.jl/stable) [![dev documentation](https://img.shields.io/badge/docs-dev-cyan)](https://lcsb-biocore.github.io/PikaParser.jl/dev) |
+
 A simple straightforward implementation of PikaParser in pure Julia, following
 the specification by Luke A. D. Hutchison (see
 https://github.com/lukehutch/pikaparser).
@@ -43,7 +47,7 @@ rules = Dict(
 
 g = P.make_grammar(
     [:expr], # the top-level rule
-    P.flatten(rules),
+    P.flatten(rules, Char), # process the rules into a single level and specialize them for crunching Chars
 )
 ```
 
@@ -51,13 +55,16 @@ The grammar is now prepared for parsing.
 
 ### Parsing text
 
-Pika parsers require frequent indexing of the input, Strings thus need to be
-converted to character vectors to be usable as parser input. (To improve
-performance, it is advisable to lex your input into a vector of more complex
-tokens.)
+Parsing is executed simply by running your grammar on any indexable input using
+`parse`.
+
+(Notably, PikaParsers require frequent indexing of inputs, and incremental
+parsing of streams is thus complicated. To improve the performance, it is also
+advisable to lex your input into a vector of more complex tokens, using e.g.
+`parse_lex`.)
 
 ```julia
-input = collect("12-(34+567-8)")
+input = "12-(34+567-8)"
 p = P.parse(g, input)
 ```
 
@@ -67,7 +74,7 @@ P.find_match_at!(p, :expr, 1)
 ```
 ...which returns an index in the match table (if found), such as `45`.
 
-You can have a look at the match. `p.matches[45]` should return:
+You can have a look at the match: `p.matches[45]` should return:
 ```julia
 PikaParser.Match(10, 1, 13, 2, [44])
 ```
@@ -89,25 +96,25 @@ JuliaFormatter, you will get something like:
 ```julia
 expr(
     minusexpr(
-        expr(digits(digit('1'), digit('2'))),
-        var"minusexpr-2"('-'),
+        expr(digits(digit("1"), digit("2"))),
+        var"minusexpr-2"("-"),
         expr(
             parens(
-                var"parens-1"('('),
+                var"parens-1"("("),
                 expr(
                     plusexpr(
-                        expr(digits(digit('3'), digit('4'))),
-                        var"plusexpr-2"('+'),
+                        expr(digits(digit("3"), digit("4"))),
+                        var"plusexpr-2"("+"),
                         expr(
                             minusexpr(
-                                expr(digits(digit('5'), digit('6'), digit('7'))),
-                                var"minusexpr-2"('-'),
-                                expr(digits(digit('8'))),
+                                expr(digits(digit("5"), digit("6"), digit("7"))),
+                                var"minusexpr-2"("-"),
+                                expr(digits(digit("8"))),
                             ),
                         ),
                     ),
                 ),
-                var"parens-3"(')'),
+                var"parens-3"(")"),
             ),
         ),
     ),
@@ -120,7 +127,7 @@ evaluate the expression as follows:
 ```julia
 P.traverse_match(p, P.find_match_at!(p, :expr, 1),
     fold = (m, p, subvals) ->
-        m.rule == :digits ? parse(Int, String(m.view)) :
+        m.rule == :digits ? parse(Int, m.view) :
         m.rule == :expr ? subvals[1] :
         m.rule == :parens ? subvals[2] :
         m.rule == :plusexpr ? subvals[1] + subvals[3] :

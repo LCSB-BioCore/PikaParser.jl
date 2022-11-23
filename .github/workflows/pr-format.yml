@@ -7,7 +7,7 @@ name: Formatting
 
 jobs:
   formatting:
-    if: github.event_name == 'pull_request' || (github.event_name == 'issue_comment' && github.event.issue.pull_request && (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER' || github.event.issue.user.id == github.event.comment.user.id) && startsWith(github.event.comment.body, '/format') )
+    if: github.event_name == 'pull_request' || (github.event_name == 'issue_comment' && github.event.issue.pull_request && (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR' || github.event.comment.author_association == 'OWNER' || github.event.issue.user.id == github.event.comment.user.id) && startsWith(github.event.comment.body, '/format') )
     runs-on: ubuntu-latest
     steps:
       - name: Clone the repository
@@ -57,6 +57,6 @@ jobs:
               ":x: Auto-formatting triggered by [this comment](${{ github.event.comment.html_url }}) failed, perhaps someone pushed to the PR in the meantime?"
             fi
           else
-            then gh pr comment ${{ github.event.issue.number }} --body \
+            gh pr comment ${{ github.event.issue.number }} --body \
               ":sunny: Auto-formatting triggered by [this comment](${{ github.event.comment.html_url }}) succeeded, but the code was already formatted correctly."
           fi

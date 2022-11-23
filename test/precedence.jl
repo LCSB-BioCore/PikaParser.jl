@@ -17,7 +17,7 @@
         )...,
     )
 
-    g = P.make_grammar([:expr], P.flatten(rules))
+    g = P.make_grammar([:expr], P.flatten(rules, Char))
 
     @test issetequal(
         g.names,
@@ -44,7 +44,7 @@
         ],
     )
 
-    input = collect("1*1-1+1^(1+1)^1")
+    input = "1*1-1+1^(1+1)^1"
     p = P.parse(g, input)
     m = P.find_match_at!(p, :expr, 1)
     @test p.matches[m].len == length(input)
@@ -64,11 +64,11 @@ end
         P.@precedences (n -> Symbol(:rule, n)) same next begin
             :expr => P.seq(same, P.token('+'), next)
             P.seq(same, P.token('*'), next)
-            P.first(:eeks => P.token('x'), :parens)
+            P.first(:eekses => P.tokens("xxx"), :parens)
         end
     )
 
-    g = P.make_grammar([:expr], P.flatten(rules))
+    g = P.make_grammar([:expr], P.flatten(rules, Char))
 
     @test issetequal(
         g.names,
@@ -76,7 +76,7 @@ end
             Symbol("parens-3"),
             Symbol("parens-1"),
             :parens,
-            :eeks,
+            :eekses,
             Symbol("rule3-1"),
             :rule3,
             Symbol("rule2-1-2"),
@@ -88,7 +88,7 @@ end
         ],
     )
 
-    input = collect("x+x*(x+x)*x")
+    input = "xxx+xxx*(xxx+xxx)*xxx"
     p = P.parse(g, input)
     m = P.find_match_at!(p, :expr, 1)
     @test p.matches[m].len == length(input)

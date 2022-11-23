@@ -12,8 +12,8 @@ topological order of the parsing).
 """
 function make_grammar(
     starts::AbstractVector{G},
-    rules_dict::Dict{G,Clause{G}};
-)::Grammar{G} where {G}
+    rules_dict::Dict{G,Clause{G,T}};
+)::Grammar{G,T} where {G,T}
     rules = collect(rules_dict)
     n_rules = length(rules)
     rule_idx = Dict{G,Int}(map(Base.first, rules) .=> eachindex(rules))
@@ -48,8 +48,8 @@ function make_grammar(
 
     # squash clause names to integers
     name_idx = Dict{G,Int}(rid => topo_order_idx[rule_idx[rid]] for (rid, _) in rules)
-    clauses = Clause{Int}[
-        rechildren(cl, [name_idx[chcl] for chcl in child_clauses(cl)]) for
+    clauses = Clause{Int,T}[
+        rechildren(cl, T, [name_idx[chcl] for chcl in child_clauses(cl)]) for
         (_, cl) in reordered
     ]
 
@@ -68,7 +68,7 @@ function make_grammar(
         end
     end
     parent_clauses = collect.(parent_clauses)
-    q = PikaQueue(eachindex(clauses))
+    q = full_queue(length(clauses))
 
     while !isempty(q)
         cur = pop!(q)
@@ -91,7 +91,7 @@ function make_grammar(
         end
     end
 
-    Grammar{G}(
+    Grammar{G,T}(
         Base.first.(reordered),
         Dict{G,Int}(rid => i for (i, (rid, _)) in enumerate(reordered)),
         clauses,

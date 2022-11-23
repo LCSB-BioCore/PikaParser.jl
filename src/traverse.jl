@@ -2,22 +2,6 @@
 """
 $(TYPEDSIGNATURES)
 
-Find any possible match of anything starting at input position `pos`.
-Preferentially returns the parses that are topologically higher.
-
-If found, returns the [`Match`](@ref) index in [`ParserState`](@ref), and the
-name of the corresponding grammar production rule.
-"""
-function find_first_parse_at(st::ParserState{G}, pos::Int)::Maybe{Tuple{Int,G}} where {G}
-    tk = searchsortedfirst(st.memo, MemoKey(0, pos - 1))
-    tk == pastendsemitoken(st.memo) && return nothing
-    k = deref_key((st.memo, tk))
-    return (st.memo[k], st.grammar.names[k.clause])
-end
-
-"""
-$(TYPEDSIGNATURES)
-
 Find the [`Match`](@ref) index in [`ParserState`](@ref) that matched `rule` at
 position `pos`, or `nothing` if there is no such match.
 
@@ -26,7 +10,7 @@ function creates the necessary matches in the tables in `st` in case they are
 missing. (That is the reason for the `!` label.)
 """
 function find_match_at!(st::ParserState{G}, rule::G, pos::Int)::Maybe{Int} where {G}
-    lookup_best_match_id!(MemoKey(st.grammar.idx[rule], pos), st)
+    lookup_best_match_id!(pos, st.grammar.idx[rule], st)
 end
 
 """
@@ -59,7 +43,7 @@ The default function used as `fold` argument in [`traverse_match`](@ref).
 default_fold(m, p, subvals) = Expr(
     :call,
     m.rule,
-    (isterminal(p.grammar.clauses[p.grammar.idx[m.rule]]) ? m.view : subvals)...,
+    (isterminal(p.grammar.clauses[p.grammar.idx[m.rule]]) ? Ref(m.view) : subvals)...,
 )
 
 """
@@ -84,6 +68,10 @@ given submatch, `nothing` is used as the folded value for the submatch. The
 default `open` and `fold` ([`default_open`](@ref), [`default_fold`](@ref)) just
 collect all submatch values and produce a Julia `Expr` AST structure where rule
 expansions are represented as function calls.
+
+For producing the [`UserMatch`](@ref) structures correctly, `traverse_match`
+additionally requires that the input vector (stored here in `ParserState`) has
+a compatible overload of the standard `Base.view`.
 """
 function traverse_match(
     st::ParserState{G,I},
@@ -91,7 +79,7 @@ function traverse_match(
     open::Function = default_open,
     fold::Function = default_fold,
 ) where {G,I}
-    stk = TraverseNode{G,eltype(I)}[TraverseNode(
+    stk = TraverseNode[TraverseNode(
         0,
         0,
         user_view(
@@ -105,15 +93,13 @@ function traverse_match(
     )]
 
     while true
-        # note: `while true` looks a bit crude, right?. Isn't there an iterator
-        # that would generate nothing forever, ideally called `forever`?
         cur = last(stk)
         if !cur.open
             cur.open = true
             cur.subvals = Any[nothing for _ in eachindex(cur.match.submatches)]
             mask = collect(open(cur.match, st))
             parent_idx = length(stk)
-            # push in reverse order so that it is still evaluated "forward"
+            # tricky: push in reverse order so that it is still evaluated "forward"
             for i in reverse(eachindex(cur.subvals))
                 if mask[i]
                     submid = cur.match.submatches[i]

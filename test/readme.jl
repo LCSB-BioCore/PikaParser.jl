@@ -12,7 +12,7 @@
         :minusexpr => P.seq(:expr, P.token('-'), :expr),
     )
 
-    rules_flat = P.flatten(rules)
+    rules_flat = P.flatten(rules, Char)
 
     @test issetequal(
         keys(rules_flat),
@@ -37,18 +37,12 @@
 
     @test last(g.names) == :expr
 
-    input_str = "12-(34+567-8)"
-    input = collect(input_str)
+    input = "12-(34+567-8)"
     p = P.parse(g, input)
 
-    mid1, rule = P.find_first_parse_at(p, 1)
-    @test p.matches[mid1].pos == 1
-    @test rule == :expr
-
     mid = P.find_match_at!(p, :expr, 1)
-
-    @test !isnothing(mid)
-    @test mid == mid1
+    @test mid != 0
+    @test p.matches[mid].pos == 1
     @test P.view_match(p, mid) == input
 
     m = p.matches[P.find_match_at!(p, :expr, 1)]
@@ -57,25 +51,25 @@
     x = P.traverse_match(p, P.find_match_at!(p, :expr, 1))
     @test x == :(expr(
         minusexpr(
-            expr(digits(digit('1'), digit('2'))),
-            var"minusexpr-2"('-'),
+            expr(digits(digit("1"), digit("2"))),
+            var"minusexpr-2"("-"),
             expr(
                 parens(
-                    var"parens-1"('('),
+                    var"parens-1"("("),
                     expr(
                         plusexpr(
-                            expr(digits(digit('3'), digit('4'))),
-                            var"plusexpr-2"('+'),
+                            expr(digits(digit("3"), digit("4"))),
+                            var"plusexpr-2"("+"),
                             expr(
                                 minusexpr(
-                                    expr(digits(digit('5'), digit('6'), digit('7'))),
-                                    var"minusexpr-2"('-'),
-                                    expr(digits(digit('8'))),
+                                    expr(digits(digit("5"), digit("6"), digit("7"))),
+                                    var"minusexpr-2"("-"),
+                                    expr(digits(digit("8"))),
                                 ),
                             ),
                         ),
                     ),
-                    var"parens-3"(')'),
+                    var"parens-3"(")"),
                 ),
             ),
         ),
@@ -85,12 +79,12 @@
         p,
         P.find_match_at!(p, :expr, 1),
         fold = (m, p, subvals) ->
-            m.rule == :digits ? parse(Int, String(m.view)) :
+            m.rule == :digits ? parse(Int, m.view) :
             m.rule == :expr ? subvals[1] :
             m.rule == :parens ? subvals[2] :
             m.rule == :plusexpr ? subvals[1] + subvals[3] :
             m.rule == :minusexpr ? subvals[1] - subvals[3] : nothing,
     )
 
-    @test res == eval(Meta.parse(input_str))
+    @test res == eval(Meta.parse(input))
 end
