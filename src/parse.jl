@@ -169,3 +169,53 @@ function parse(
 
     st
 end
+
+"""
+$(TYPEDSIGNATURES)
+
+Greedily find terminals in the input sequence, while avoiding any attempts at
+parsing terminals where another terminal was already parsed successfully.
+"""
+function lex(
+    g::Grammar{G,T},
+    input::I,
+)::Vector{Vector{Tuple{G,Int}}} where {G,T,I<:AbstractVector{T}}
+    q = PikaQueue(length(input))
+    push!(q, 1)
+    res = [Vector{Tuple{G,Int}}() for _ in eachindex(input)]
+    while !isempty(q)
+        pos = pop!(q)
+        for tidx in g.terminals
+            m = match_terminal(g.clauses[tidx], input, pos)
+            if m >= 0
+                push!(res[pos], tuple(g.names[tidx], m))
+            end
+            if m > 0 && pos + m <= length(input)
+                push!(q, pos + m)
+            end
+        end
+    end
+    res
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Use [`lex`](@ref) to greedily produce lexemes for a given grammar, and run the
+parsing atop the result.
+
+While this will produce a different (much more sparse) parsing table and the
+resulting parse tree may be different from the "full" parse, having the lower
+levels of the parse tree efficiently pre-chewed vastly simplifies the overall
+parsing, thus saving a lot of time.
+"""
+function parse_lex(
+    g::Grammar{G,T},
+    input::I,
+)::ParserState{G,T,I} where {G,T,I<:AbstractVector{T}}
+    lexemes = lex(g, input)
+    fm = (_, i, cb) -> for (rid, len) in lexemes[i]
+        cb(rid, len)
+    end
+    return parse(g, input, fm)
+end
