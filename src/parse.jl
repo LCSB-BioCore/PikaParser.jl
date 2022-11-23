@@ -111,7 +111,7 @@ function parse(
             fast_match(
                 input,
                 i,
-                (rid, len) -> let cl = grammar.idx[rid]
+                (rid::G, len::Int) -> let cl = grammar.idx[rid]
                     add_match!(
                         i,
                         cl,

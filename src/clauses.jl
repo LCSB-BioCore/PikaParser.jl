@@ -143,7 +143,7 @@ function match_clause!(
     id::Int,
     pos::Int,
     st::ParserState{G,T,I},
-)::MatchResult where {G,T,I,IG,TT<:Terminal{IG,T}}
+)::MatchResult where {G,T,I<:AbstractVector{T},IG,TT<:Terminal{IG,T}}
     len = match_terminal(x, st.input, pos)
     if len < 0
         return 0
