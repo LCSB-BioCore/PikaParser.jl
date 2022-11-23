@@ -44,7 +44,7 @@ end
 rechildren(x::Satisfy, t::DataType, v::Vector) = Satisfy{valtype(v),t}(x.match)
 rechildren(x::Scan, t::DataType, v::Vector) = Scan{valtype(v),t}(x.match)
 rechildren(x::Token, t::DataType, v::Vector) = Token{valtype(v),t}(x.token)
-rechildren(x::Tokens, t::DataType, v::Vector) = Tokens{valtype(v),t}(x.tokens)
+rechildren(x::Tokens, t::DataType, v::Vector) = Tokens{valtype(v),t,typeof(x.tokens)}(x.tokens)
 rechildren(x::Epsilon, t::DataType, v::Vector) = Epsilon{valtype(v),t}()
 rechildren(x::Fail, t::DataType, v::Vector) = Fail{valtype(v),t}()
 rechildren(x::Seq, t::DataType, v::Vector) = Seq{valtype(v),t}(v)
@@ -113,19 +113,19 @@ can_match_epsilon(x::Tie, ch::Vector{Bool}) = ch[1]
 # Clause matching
 #
 
-function match_terminal(x::Satisfy{G,T}, input::Vector{T}, pos::Int)::Int where {G,T}
+function match_terminal(x::Satisfy{G,T}, input::I, pos::Int)::Int where {G,T,I}
     return x.match(input[pos]) ? 1 : -1
 end
 
-function match_terminal(x::Scan{G,T}, input::Vector{T}, pos::Int)::Int where {G,T}
+function match_terminal(x::Scan{G,T}, input::I, pos::Int)::Int where {G,T,I}
     return x.match(view(input, pos:length(input)))
 end
 
-function match_terminal(x::Token{G,T}, input::Vector{T}, pos::Int)::Int where {G,T}
+function match_terminal(x::Token{G,T}, input::I, pos::Int)::Int where {G,T,I}
     return x.token == input[pos] ? 1 : -1
 end
 
-function match_terminal(x::Tokens{G,T}, input::Vector{T}, pos::Int)::Int where {G,T}
+function match_terminal(x::Tokens{G,T,I}, input::I, pos::Int)::Int where {G,T,I}
     len = length(x.tokens)
     if pos + len - 1 <= length(input)
         for (i, t) in enumerate(x.tokens)
@@ -143,7 +143,7 @@ function match_clause!(
     id::Int,
     pos::Int,
     st::ParserState{G,T,I},
-)::MatchResult where {G,T,I<:AbstractVector{T},IG,TT<:Terminal{IG,T}}
+)::MatchResult where {G,T,I,IG,TT<:Terminal{IG,T}}
     len = match_terminal(x, st.input, pos)
     if len < 0
         return 0

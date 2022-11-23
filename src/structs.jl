@@ -78,8 +78,8 @@ A series of tokens equal to `match`.
 # Fields
 $(TYPEDFIELDS)
 """
-struct Tokens{G,T} <: Terminal{G,T}
-    tokens::Vector{T}
+struct Tokens{G,T,I} <: Terminal{G,T}
+    tokens::I
 end
 
 """

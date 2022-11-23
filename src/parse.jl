@@ -90,7 +90,7 @@ function parse(
     grammar::Grammar{G,T},
     input::I,
     fast_match = nothing,
-)::ParserState{G,T,I} where {G,T,I<:AbstractVector{T}}
+)::ParserState{G,T,I} where {G,T,I}
     st = ParserState{G,T,I}(
         grammar,
         PikaQueue(length(grammar.clauses)),
@@ -142,7 +142,7 @@ function parse(
             match = 0
             if cls isa Token{Int,T}
                 match = match_clause!(cls, clause, i, st)
-            elseif cls isa Tokens{Int,T}
+            elseif cls isa Tokens{Int,T,I}
                 match = match_clause!(cls, clause, i, st)
             elseif cls isa Satisfy{Int,T}
                 match = match_clause!(cls, clause, i, st)
@@ -179,7 +179,7 @@ parsing terminals where another terminal was already parsed successfully.
 function lex(
     g::Grammar{G,T},
     input::I,
-)::Vector{Vector{Tuple{G,Int}}} where {G,T,I<:AbstractVector{T}}
+)::Vector{Vector{Tuple{G,Int}}} where {G,T,I}
     q = PikaQueue(length(input))
     push!(q, 1)
     res = [Vector{Tuple{G,Int}}() for _ in eachindex(input)]
@@ -212,7 +212,7 @@ parsing, thus saving a lot of time.
 function parse_lex(
     g::Grammar{G,T},
     input::I,
-)::ParserState{G,T,I} where {G,T,I<:AbstractVector{T}}
+)::ParserState{G,T,I} where {G,T,I}
     lexemes = lex(g, input)
     fm = (_, i, cb) -> for (rid, len) in lexemes[i]
         cb(rid, len)

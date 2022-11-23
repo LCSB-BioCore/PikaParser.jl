@@ -42,10 +42,10 @@ Build a [`Tokens`](@ref) clause. Translate to strongly typed grammar with [`flat
 
 # Example
 
-    tokens(collect("keyword"))
+    tokens("keyword")
 """
-function tokens(xs::AbstractVector{T}) where {T}
-    Tokens{Any,T}(xs)
+function tokens(xs::I) where {I}
+    Tokens{Any,eltype(I),I}(xs)
 end
 
 """
