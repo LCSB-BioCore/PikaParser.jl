@@ -51,13 +51,16 @@ The grammar is now prepared for parsing.
 
 ### Parsing text
 
-Pika parsers require frequent indexing of the input, Strings thus need to be
-converted to character vectors to be usable as parser input. (To improve
-performance, it is advisable to lex your input into a vector of more complex
-tokens.)
+Parsing is executed simply by running your grammar on any indexable input using
+`parse`.
+
+(Notably, PikaParsers require frequent indexing of inputs, and incremental
+parsing of streams is thus complicated. To improve the performance, it is also
+advisable to lex your input into a vector of more complex tokens, using e.g.
+`parse_lex`.)
 
 ```julia
-input = collect("12-(34+567-8)")
+input = "12-(34+567-8)"
 p = P.parse(g, input)
 ```
 
@@ -89,25 +92,25 @@ JuliaFormatter, you will get something like:
 ```julia
 expr(
     minusexpr(
-        expr(digits(digit('1'), digit('2'))),
-        var"minusexpr-2"('-'),
+        expr(digits(digit("1"), digit("2"))),
+        var"minusexpr-2"("-"),
         expr(
             parens(
-                var"parens-1"('('),
+                var"parens-1"("("),
                 expr(
                     plusexpr(
-                        expr(digits(digit('3'), digit('4'))),
-                        var"plusexpr-2"('+'),
+                        expr(digits(digit("3"), digit("4"))),
+                        var"plusexpr-2"("+"),
                         expr(
                             minusexpr(
-                                expr(digits(digit('5'), digit('6'), digit('7'))),
-                                var"minusexpr-2"('-'),
-                                expr(digits(digit('8'))),
+                                expr(digits(digit("5"), digit("6"), digit("7"))),
+                                var"minusexpr-2"("-"),
+                                expr(digits(digit("8"))),
                             ),
                         ),
                     ),
                 ),
-                var"parens-3"(')'),
+                var"parens-3"(")"),
             ),
         ),
     ),

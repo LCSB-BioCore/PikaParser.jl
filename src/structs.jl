@@ -274,7 +274,7 @@ User-facing representation of a [`Match`](@ref).
 # Fields
 $(TYPEDFIELDS)
 """
-struct UserMatch{G,T}
+struct UserMatch{G,S}
     "Which rule ID has matched here?"
     rule::G
 
@@ -284,8 +284,8 @@ struct UserMatch{G,T}
     "How long is the match?"
     len::Int
 
-    "View of the matched part of the input vector."
-    view::SubArray{T}
+    "View of the matched part of the input, usually a `SubArray` or `SubString`."
+    view::S
 
     "Indexes and rule labels of the matched submatches. This forms the edges in the match tree."
     submatches::Vector{Int}
@@ -351,10 +351,10 @@ Part of intermediate tree traversing state.
 # Fields
 $(TYPEDFIELDS)
 """
-mutable struct TraverseNode{G,T}
+mutable struct TraverseNode{G,S}
     parent_idx::Int
     parent_sub_idx::Int
-    match::UserMatch{G,T}
+    match::UserMatch{G,S}
     open::Bool
     subvals::Vector
 end

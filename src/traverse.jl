@@ -43,7 +43,7 @@ The default function used as `fold` argument in [`traverse_match`](@ref).
 default_fold(m, p, subvals) = Expr(
     :call,
     m.rule,
-    (isterminal(p.grammar.clauses[p.grammar.idx[m.rule]]) ? m.view : subvals)...,
+    (isterminal(p.grammar.clauses[p.grammar.idx[m.rule]]) ? Ref(m.view) : subvals)...,
 )
 
 """
@@ -68,6 +68,10 @@ given submatch, `nothing` is used as the folded value for the submatch. The
 default `open` and `fold` ([`default_open`](@ref), [`default_fold`](@ref)) just
 collect all submatch values and produce a Julia `Expr` AST structure where rule
 expansions are represented as function calls.
+
+For producing the [`UserMatch`](@ref) structures correctly, `traverse_match`
+additionally requires that the input vector (stored here in `ParserState`) has
+a compatible overload of the standard `Base.view`.
 """
 function traverse_match(
     st::ParserState{G,I},
@@ -75,7 +79,7 @@ function traverse_match(
     open::Function = default_open,
     fold::Function = default_fold,
 ) where {G,I}
-    stk = TraverseNode{G,eltype(I)}[TraverseNode(
+    stk = TraverseNode[TraverseNode(
         0,
         0,
         user_view(
@@ -89,15 +93,13 @@ function traverse_match(
     )]
 
     while true
-        # note: `while true` looks a bit crude, right?. Isn't there an iterator
-        # that would generate nothing forever, ideally called `forever`?
         cur = last(stk)
         if !cur.open
             cur.open = true
             cur.subvals = Any[nothing for _ in eachindex(cur.match.submatches)]
             mask = collect(open(cur.match, st))
             parent_idx = length(stk)
-            # push in reverse order so that it is still evaluated "forward"
+            # tricky: push in reverse order so that it is still evaluated "forward"
             for i in reverse(eachindex(cur.subvals))
                 if mask[i]
                     submid = cur.match.submatches[i]

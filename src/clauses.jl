@@ -44,7 +44,8 @@ end
 rechildren(x::Satisfy, t::DataType, v::Vector) = Satisfy{valtype(v),t}(x.match)
 rechildren(x::Scan, t::DataType, v::Vector) = Scan{valtype(v),t}(x.match)
 rechildren(x::Token, t::DataType, v::Vector) = Token{valtype(v),t}(x.token)
-rechildren(x::Tokens, t::DataType, v::Vector) = Tokens{valtype(v),t,typeof(x.tokens)}(x.tokens)
+rechildren(x::Tokens, t::DataType, v::Vector) =
+    Tokens{valtype(v),t,typeof(x.tokens)}(x.tokens)
 rechildren(x::Epsilon, t::DataType, v::Vector) = Epsilon{valtype(v),t}()
 rechildren(x::Fail, t::DataType, v::Vector) = Fail{valtype(v),t}()
 rechildren(x::Seq, t::DataType, v::Vector) = Seq{valtype(v),t}(v)
@@ -114,7 +115,7 @@ can_match_epsilon(x::Tie, ch::Vector{Bool}) = ch[1]
 #
 
 function match_terminal(x::Satisfy{G,T}, input::I, pos::Int)::Int where {G,T,I}
-    return x.match(input[pos]) ? 1 : -1
+    return x.match(input[pos]) ? nextind(input, pos) - pos : -1
 end
 
 function match_terminal(x::Scan{G,T}, input::I, pos::Int)::Int where {G,T,I}
@@ -122,18 +123,21 @@ function match_terminal(x::Scan{G,T}, input::I, pos::Int)::Int where {G,T,I}
 end
 
 function match_terminal(x::Token{G,T}, input::I, pos::Int)::Int where {G,T,I}
-    return x.token == input[pos] ? 1 : -1
+    return x.token == input[pos] ? nextind(input, pos) - pos : -1
 end
 
 function match_terminal(x::Tokens{G,T,I}, input::I, pos::Int)::Int where {G,T,I}
-    len = length(x.tokens)
-    if pos + len - 1 <= length(input)
-        for (i, t) in enumerate(x.tokens)
-            if t != input[pos+i-1]
-                return -1
-            end
-        end
-        return len
+    ii = pos
+    ie = lastindex(input)
+    ti = 1
+    te = lastindex(x.tokens)
+    while true
+        ii <= ie || break
+        ti <= te || break
+        input[ii] == x.tokens[ti] || break
+        ii = nextind(input, ii)
+        ti == te && return ii - pos
+        ti = nextind(x.tokens, ti)
     end
     return -1
 end
@@ -271,14 +275,8 @@ end
 # "User" view of the clauses, for parsetree traversing
 #
 
-function UserMatch(
-    id::Int,
-    m::Match,
-    submatches::Vector{Int},
-    st::ParserState{G,T,I},
-) where {G,T,I}
-    UserMatch{G,T}(st.grammar.names[id], m.pos, m.len, view_match(st, m), submatches)
-end
+UserMatch(id::Int, m::Match, submatches::Vector{Int}, st::ParserState) =
+    UserMatch(st.grammar.names[id], m.pos, m.len, view_match(st, m), submatches)
 
 function user_view(::Clause, id::Int, mid::Int, st::ParserState)
     # generic case

@@ -55,8 +55,8 @@ end
 
     p = P.parse(g, [:one, :one, :two, :three, :three])
     @test all(
-        (0 .== (P.find_match_at!(p, 3, pos) for pos = 1:5)) .==
-        [false, false, true, false, true],
+        ((P.find_match_at!(p, 3, pos) for pos = 1:5) .> 0) .==
+        [true, true, false, true, false],
     )
 end
 
@@ -69,17 +69,17 @@ end
 
     g = P.make_grammar([:list], P.flatten(rules, Char))
 
-    input = collect("1,2,3,4,5")
+    input = "1,2,3,4,5"
     p = P.parse(g, input)
 
     mid = P.find_match_at!(p, :list, 1)
     @test mid != 0
     @test p.matches[mid].len == length(input)
     @test P.traverse_match(p, mid) == :(list(
-        digit('1'),
-        sepdigit(sep(','), digit('2')),
-        sepdigit(sep(','), digit('3')),
-        sepdigit(sep(','), digit('4')),
-        sepdigit(sep(','), digit('5')),
+        digit("1"),
+        sepdigit(sep(","), digit("2")),
+        sepdigit(sep(","), digit("3")),
+        sepdigit(sep(","), digit("4")),
+        sepdigit(sep(","), digit("5")),
     ))
 end

@@ -49,16 +49,22 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Take a [`Grammar`](@ref) and an indexable input sequence, and return a final
-[`ParserState`](@ref) that contains all matched grammar productions.
+Take a [`Grammar`](@ref) and an indexable input sequence (typically `Vector` or
+`String`), and return a final [`ParserState`](@ref) that contains all matched
+grammar productions.
 
-# Fast terminal matching
+The `input` must be random-indexable (because PikaParsers require a lot of
+random indexing). In particular, the type must support Int index computation
+with `firstindex`, `lastindex`, `prevind`, `nextind`, and a working `+`.
+
+# Lexing and fast terminal matching
 
 If `fast_match` is specified, the function does not match terminals using the
 associated grammar rules, but with a `fast_match` function that reports the
 matched terminals via a callback. The function is called exactly once for each
-position in `input` in reverse order (i.e., the indexes will follow
-`reverse(1:length(input))`, which can be utilized by the application for
+position in `input` in reverse order (i.e., the indexes will start at
+`lastindex(input)` and continue using `prevind` all the way to
+`firstindex(input)`), which can be utilized by the application for
 optimization).  The call parameters consist of the input vector, position in
 the input vector, and a "report" function used to send back a clause ID (of
 same type as `G` in `typeof(grammar)`) and the length of the terminal matches
@@ -68,6 +74,21 @@ repeated if more terminal types match. Terminals not reported by the calls to
 
 For complicated grammars, this may be much faster than having the parser to try
 matching all terminal types at each position.
+
+If your grammar does not contain dangerous or highly surprising kinds of
+terminals (in particular, it can be scanned greedily left-to-right), you may
+use [`parse_lex`](@ref) to run a reasonable terminal-only lexing step, which is
+then automatically used as a basis for fast matching.
+
+# Caveats
+
+Take care when indexing `String`s. With UTF-8, not all codepoints may
+necessarily have length 1. Illustratively, the example below may easily break
+when processing letters or digits that are longer than 1 byte.
+
+If unsure, you may always `collect` the strings to vectors of `Char`s
+(basically converting to UTF-32), where each character occupies precisely one
+index.
 
 # Results
 
@@ -82,9 +103,10 @@ span the whole input.
 
     parse(
         g,
-        collect("abcde123"),
+        "abcde123",
         (input, i, match) -> isdigit(input[i]) ? match(:digit, 1) : match(:letter, 1),
     )
+
 """
 function parse(
     grammar::Grammar{G,T},
@@ -104,7 +126,8 @@ function parse(
     terminal_q = PikaQueue(length(grammar.clauses))
     reset!(terminal_q, grammar.terminals)
 
-    for i in reverse(eachindex(input))
+    i = lastindex(input)
+    while i >= firstindex(input)
         if isnothing(fast_match)
             reset!(st.q, terminal_q)
         else
@@ -165,6 +188,7 @@ function parse(
             end
             add_match!(i, clause, match, st)
         end
+        i = prevind(input, i)
     end
 
     st
@@ -176,13 +200,10 @@ $(TYPEDSIGNATURES)
 Greedily find terminals in the input sequence, while avoiding any attempts at
 parsing terminals where another terminal was already parsed successfully.
 """
-function lex(
-    g::Grammar{G,T},
-    input::I,
-)::Vector{Vector{Tuple{G,Int}}} where {G,T,I}
-    q = PikaQueue(length(input))
+function lex(g::Grammar{G,T}, input::I)::Vector{Vector{Tuple{G,Int}}} where {G,T,I}
+    q = PikaQueue(lastindex(input))
     push!(q, 1)
-    res = [Vector{Tuple{G,Int}}() for _ in eachindex(input)]
+    res = fill(Vector{Tuple{G,Int}}(), lastindex(input))
     while !isempty(q)
         pos = pop!(q)
         for tidx in g.terminals
@@ -209,10 +230,7 @@ resulting parse tree may be different from the "full" parse, having the lower
 levels of the parse tree efficiently pre-chewed vastly simplifies the overall
 parsing, thus saving a lot of time.
 """
-function parse_lex(
-    g::Grammar{G,T},
-    input::I,
-)::ParserState{G,T,I} where {G,T,I}
+function parse_lex(g::Grammar{G,T}, input::I)::ParserState{G,T,I} where {G,T,I}
     lexemes = lex(g, input)
     fm = (_, i, cb) -> for (rid, len) in lexemes[i]
         cb(rid, len)
