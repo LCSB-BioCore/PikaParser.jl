@@ -6,7 +6,8 @@
 """
 $(TYPEDEF)
 
-Abstract type for all clauses that match a grammar with rule labels of type `G` that match sequences of tokens of type `T`.
+Abstract type for all clauses that match a grammar with rule labels of type `G`
+that match sequences of tokens of type `T`.
 
 Currently implemented clauses:
 - [`Satisfy`](@ref)
@@ -23,7 +24,8 @@ Currently implemented clauses:
 - [`Many`](@ref)
 - [`Tie`](@ref)
 
-Often it is better to use convenience functions for rule construction, such as [`seq`](@ref) or [`token`](@ref); see [`flatten`](@ref) for details.
+Often it is better to use convenience functions for rule construction, such as
+[`seq`](@ref) or [`token`](@ref); see [`flatten`](@ref) for details.
 """
 abstract type Clause{G,T} end
 
@@ -174,10 +176,12 @@ end
 $(TYPEDEF)
 
 Produces the very same match as the `item`, but concatenates the user views of
-the resulting submatches into one big vector. (Thus basically squashing the 2
+the resulting submatches into one big vector (i.e., basically squashing the 2
 levels of child matches to a single one.) Useful e.g. for lists with different
-initial or final elements. (As a result, the `item` and its immediate children
-are _not_ going to be present in the parse tree.)
+initial or final elements.
+
+As a result, the `item` and its immediate children are _not_ going to be
+present in the parse tree.
 
 # Fields
 $(TYPEDFIELDS)

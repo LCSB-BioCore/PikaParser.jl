@@ -9,12 +9,16 @@ function lookup_best_match_id!(
 
     if st.grammar.can_match_epsilon[clause]
         cls = st.grammar.clauses[clause]
-        match = 0
         if cls isa FollowedBy{Int,T}
             return match_epsilon!(cls, clause, pos, st)
         elseif cls isa NotFollowedBy{Int,T}
             return match_epsilon!(cls, clause, pos, st)
+        elseif cls isa Epsilon{Int,T}
+            return match_epsilon!(cls, clause, pos, st)
+        elseif cls isa Many{Int,T}
+            return match_epsilon!(cls, clause, pos, st)
         else
+            # This is reached rarely in corner cases
             return match_epsilon!(cls, clause, pos, st)
         end
     end
@@ -22,28 +26,30 @@ function lookup_best_match_id!(
     return 0
 end
 
-function new_match!(match::Match, st::ParserState)::Int
-    push!(st.matches, match)
-    return length(st.matches)
-end
-
-function add_match!(pos::Int, clause::Int, match::Int, st::ParserState)
+function new_match!(match::Match, st::ParserState)
     updated = false
 
-    if match != 0
-        old = match_find!(st, clause, pos)
-        if old == 0 ||
-           better_match_than(st.grammar.clauses[clause], st.matches[match], st.matches[old])
-            match_insert!(st, match)
-            updated = true
-        end
+    best = match_find!(st, match.clause, match.pos)
+
+    if best == 0 ||
+       better_match_than(st.grammar.clauses[match.clause], match, st.matches[best])
+        push!(st.matches, match)
+        best = lastindex(st.matches)
+        match_insert!(st, best)
+        updated = true
+    else
+        # if we didn't record this match, we need to kill the submatches that
+        # were allocated prior to calling new_match!
+        submatch_rollback!(st, match.submatches)
     end
 
-    for seed in st.grammar.seed_clauses[clause]
+    for seed in st.grammar.seed_clauses[match.clause]
         if updated || st.grammar.can_match_epsilon[seed]
             push!(st.q, seed)
         end
     end
+
+    return best
 end
 
 """
@@ -122,7 +128,8 @@ function parse(
         input,
     )
 
-    # a queue pre-filled with terminal matches (used so that we don't need to refill it manually everytime)
+    # a "master" queue pre-filled with all terminal matches
+    # (so that we don't need to refill it manually everytime)
     terminal_q = PikaQueue(length(grammar.clauses))
     reset!(terminal_q, grammar.terminals)
 
@@ -135,12 +142,7 @@ function parse(
                 input,
                 i,
                 (rid::G, len::Int) -> let cl = grammar.idx[rid]
-                    add_match!(
-                        i,
-                        cl,
-                        new_match!(Match(cl, i, len, 0, submatch_empty(st)), st),
-                        st,
-                    )
+                    new_match!(Match(cl, i, len, 0, submatch_empty(st)), st)
                 end,
             )
         end
@@ -162,31 +164,31 @@ function parse(
             # the type inference to find that this dispatch is in fact very
             # regular and almost trivial.
             cls = grammar.clauses[clause]
-            match = 0
             if cls isa Token{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, clause, i, st)
             elseif cls isa Tokens{Int,T,I}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, clause, i, st)
             elseif cls isa Satisfy{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, clause, i, st)
             elseif cls isa Scan{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, clause, i, st)
             elseif cls isa Seq{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, clause, i, st)
             elseif cls isa First{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, clause, i, st)
             elseif cls isa FollowedBy{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, clause, i, st)
             elseif cls isa Many{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, clause, i, st)
             elseif cls isa Some{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, clause, i, st)
             elseif cls isa Tie{Int,T}
-                match = match_clause!(cls, clause, i, st)
+                match_clause!(cls, clause, i, st)
             else
-                match = match_clause!(cls, clause, i, st)
+                # Fallback (execution shouldn't reach here)
+                match_clause!(cls, clause, i, st)
             end
-            add_match!(i, clause, match, st)
+            # Shame ends here.
         end
         i = prevind(input, i)
     end

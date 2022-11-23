@@ -84,17 +84,25 @@ end
     ))
 end
 
-@testset "flatten complains about duplicates" begin
+@testset "Flatten complains about duplicates" begin
     rules = Dict(:x => P.seq(:x => P.fail))
 
     @test_throws DomainError P.flatten(rules, Char)
 end
 
-@testset "corner-case epsilon matches" begin
+@testset "Corner-case epsilon matches" begin
     rules = Dict(:x => P.followed_by(P.epsilon))
 
-    p = P.parse(P.flatten(rules, Char), "whatever")
+    p = P.parse(P.make_grammar([:x], P.flatten(rules, Char)), "whatever")
 
     @test P.find_match_at!(p, :x, 1) != 0
     @test P.find_match_at!(p, :x, 8) != 0
+    # no unnecessary allocation
+    @test P.find_match_at!(p, :x, 1) == P.find_match_at!(p, :x, 1)
+
+    # tie epsilon match
+    rules = Dict(:x => P.tie(P.epsilon))
+    p = P.parse(P.make_grammar([:x], P.flatten(rules, Char)), "whatever")
+
+    @test P.traverse_match(p, P.find_match_at!(p, :x, 1)) == :(x())
 end

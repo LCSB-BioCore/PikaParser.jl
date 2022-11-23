@@ -218,9 +218,7 @@ end
 
 function match_clause!(x::Many, id::Int, pos::Int, st::ParserState)::MatchResult
     mid1 = lookup_best_match_id!(pos, x.item, st)
-    if mid1 == 0
-        return match_epsilon!(x, id, pos, st)
-    end
+    mid1 == 0 && return match_epsilon!(x, id, pos, st)
     mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
     @assert mid2 != 0 "Many did not match, but it should have had!"
     new_match!(
@@ -237,7 +235,7 @@ end
 
 function match_clause!(x::Tie, id::Int, pos::Int, st::ParserState)::MatchResult
     mid = lookup_best_match_id!(pos, x.tuple, st)
-    mid == 0 && return 0
+    mid == 0 ? 0 :
     new_match!(Match(id, pos, st.matches[mid].len, 1, submatch_record!(st, mid)), st)
 end
 
@@ -249,13 +247,9 @@ end
 match_epsilon!(x::Clause, id::Int, pos::Int, st::ParserState) =
     new_match!(Match(id, pos, 0, 0, submatch_empty(st)), st)
 
-function match_epsilon(x::FollowedBy, id::Int, pos::Int, st::ParserState)
+function match_epsilon!(x::FollowedBy, id::Int, pos::Int, st::ParserState)
     mid = lookup_best_match_id!(pos[], x.follow, st)
-    if mid != 0
-        new_match!(Match(id, pos, 0, 1, submatch_record!(st, mid)), st)
-    else
-        0
-    end
+    mid == 0 ? 0 : new_match!(Match(id, pos, 0, 1, submatch_record!(st, mid)), st)
 end
 
 function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)
@@ -263,11 +257,7 @@ function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)
     # NotFollowedBy clauses is disallowed by the error thrown by
     # can_match_epsilon(::NotFollowedBy, ...)
     mid = lookup_best_match_id!(pos, x.reserved, st)
-    if mid == 0
-        new_match!(Match(id, pos, 0, 0, submatch_empty(st)), st)
-    else
-        0
-    end
+    mid != 0 ? 0 : new_match!(Match(id, pos, 0, 0, submatch_empty(st)), st)
 end
 
 
@@ -329,7 +319,7 @@ function user_view(x::Tie, id::Int, mid::Int, st::ParserState)
     m = st.matches[mid]
     if m.option_idx == 0
         # epsilon match
-        return UserMatch(id, m.pos, m.len, [], st)
+        return UserMatch(id, m, Int[], st)
     end
 
     tmid = submatches(st, mid)[1]

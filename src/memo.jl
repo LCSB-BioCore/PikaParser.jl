@@ -17,7 +17,10 @@ function submatch_record!(st::ParserState, mid1::Int, mid2::Int)
     ret = length(st.submatches)
     push!(st.submatches, mid2)
     ret
+
 end
+
+submatch_rollback!(st::ParserState, start::Int) = resize!(st.submatches, start - 1)
 
 function submatches(st::ParserState, mid::Int)
     b = st.matches[mid].submatches
