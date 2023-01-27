@@ -42,11 +42,11 @@
 
     mid = P.find_match_at!(p, :expr, 1)
     @test mid != 0
-    @test p.matches[mid].pos == 1
+    @test p.matches[mid].first == 1
     @test P.view_match(p, mid) == input
 
     m = p.matches[P.find_match_at!(p, :expr, 1)]
-    @test m.len == length(input)
+    @test m.last == lastindex(input)
 
     x = P.traverse_match(p, P.find_match_at!(p, :expr, 1))
     @test x == :(expr(

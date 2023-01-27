@@ -13,7 +13,7 @@
 
     m = P.find_match_at!(p, "seq", 1)
     @test m != 0
-    @test p.matches[m].len == length(toks)
+    @test p.matches[m].last == lastindex(toks)
 
     @test P.traverse_match(
         p,
@@ -29,22 +29,22 @@
 
     toks = [1, 1, 2]
     p = P.parse(g, toks)
-    @test p.matches[P.find_match_at!(p, "seq", 1)].len == 0
+    @test p.matches[P.find_match_at!(p, "seq", 1)].last == 0
     @test P.find_match_at!(p, "seq", 2) != 0
-    @test p.matches[P.find_match_at!(p, "seq", 2)].len == 1
-    @test p.matches[P.find_match_at!(p, "seq", 3)].len == 0
+    @test p.matches[P.find_match_at!(p, "seq", 2)].last == 2
+    @test p.matches[P.find_match_at!(p, "seq", 3)].last == 2
 
     toks = [2, 2, 2, 1]
     p = P.parse(g, toks)
-    @test p.matches[P.find_match_at!(p, "seq", 1)].len == 0
-    @test p.matches[P.find_match_at!(p, "seq", 2)].len == 0
-    @test p.matches[P.find_match_at!(p, "seq", 3)].len == 2
+    @test p.matches[P.find_match_at!(p, "seq", 1)].last == 0
+    @test p.matches[P.find_match_at!(p, "seq", 2)].last == 1
+    @test p.matches[P.find_match_at!(p, "seq", 3)].last == 4
 end
 
 @testset "Multiple token matches" begin
     rules = Dict(
         3 => P.first(
-            11 => P.scan(toks -> length(toks) >= 2 && toks[1] == toks[2] ? 2 : -1),
+            11 => P.scan(toks -> length(toks) >= 2 && toks[1] == toks[2] ? 2 : 0),
             P.tokens([:one, :two, :three]),
         ),
     )
@@ -62,25 +62,25 @@ end
 
 @testset "Tie" begin
     rules = Dict(
-        :digit => P.satisfy(isdigit),
+        :item => P.satisfy(x -> isdigit(x) || isletter(x)),
         :sep => P.token(','),
-        :list => P.tie(P.seq(P.seq(:digit), P.many(:sepdigit => P.seq(:sep, :digit)))),
+        :list => P.tie(P.seq(P.seq(:item), P.many(:sepitem => P.seq(:sep, :item)))),
     )
 
     g = P.make_grammar([:list], P.flatten(rules, Char))
 
-    input = "1,2,3,4,5"
+    input = "1,ए,A,β,Ж"
     p = P.parse(g, input)
 
     mid = P.find_match_at!(p, :list, 1)
     @test mid != 0
-    @test p.matches[mid].len == length(input)
+    @test p.matches[mid].last == lastindex(input)
     @test P.traverse_match(p, mid) == :(list(
-        digit("1"),
-        sepdigit(sep(","), digit("2")),
-        sepdigit(sep(","), digit("3")),
-        sepdigit(sep(","), digit("4")),
-        sepdigit(sep(","), digit("5")),
+        item("1"),
+        sepitem(sep(","), item("ए")),
+        sepitem(sep(","), item("A")),
+        sepitem(sep(","), item("β")),
+        sepitem(sep(","), item("Ж")),
     ))
 end
 

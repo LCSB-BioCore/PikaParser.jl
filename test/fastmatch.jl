@@ -7,10 +7,10 @@
 
     g = P.make_grammar([:seq], P.flatten(rules, Char))
     input = collect("123,234,345")
-    p = P.parse(g, input, (input, i, r) -> input[i] == ',' ? r(:sep, 1) : r(:digit, 1))
+    p = P.parse(g, input, (input, i, r) -> input[i] == ',' ? r(:sep, i) : r(:digit, i))
 
     mid = P.find_match_at!(p, :seq, 1)
-    @test p.matches[mid].len == length(input)
+    @test p.matches[mid].last == lastindex(input)
 
     x = P.traverse_match(
         p,
@@ -26,10 +26,12 @@ end
     rules = Dict(
         :digits => P.scan(m -> begin
             i = firstindex(m)
+            last = prevind(m, i)
             while i <= lastindex(m) && isdigit(m[i])
+                last = i
                 i = nextind(m, i)
             end
-            i > firstindex(m) ? i - firstindex(m) : -1
+            last
         end),
         :seq => P.seq(:digits, P.many(:cont => P.seq(:sep => P.token(','), :digits))),
     )
@@ -46,7 +48,7 @@ end
     @test length(p.matches) <= 15 # (this is tight)
 
     mid = P.find_match_at!(p, :seq, 1)
-    @test p.matches[mid].len == length(input)
+    @test p.matches[mid].last == lastindex(input)
 
     x = P.traverse_match(
         p,

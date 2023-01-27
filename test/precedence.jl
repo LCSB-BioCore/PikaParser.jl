@@ -47,7 +47,7 @@
     input = "1*1-1+1^(1+1)^1"
     p = P.parse(g, input)
     m = P.find_match_at!(p, :expr, 1)
-    @test p.matches[m].len == length(input)
+    @test p.matches[m].last == lastindex(input)
 
     fmt(x) = isnothing(x) ? () : x
     @test P.traverse_match(
@@ -91,7 +91,7 @@ end
     input = "xxx+xxx*(xxx+xxx)*xxx"
     p = P.parse(g, input)
     m = P.find_match_at!(p, :expr, 1)
-    @test p.matches[m].len == length(input)
+    @test p.matches[m].last == lastindex(input)
     fmt(x) = isnothing(x) ? () : x
 
     @test P.traverse_match(

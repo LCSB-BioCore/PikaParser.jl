@@ -90,10 +90,10 @@ end
 
 
 better_match_than(::First, new::Match, old::Match) =
-    new.option_idx == old.option_idx ? (new.len > old.len) :
+    new.option_idx == old.option_idx ? (new.last > old.last) :
     (new.option_idx < old.option_idx)
 
-better_match_than(::Clause, new::Match, old::Match) = new.len > old.len
+better_match_than(::Clause, new::Match, old::Match) = new.last > old.last
 
 
 can_match_epsilon(x::Union{Satisfy,Scan,Token,Tokens,Fail}, ::Vector{Bool}) = false
@@ -115,31 +115,32 @@ can_match_epsilon(x::Tie, ch::Vector{Bool}) = ch[1]
 #
 
 function match_terminal(x::Satisfy{G,T}, input::I, pos::Int)::Int where {G,T,I}
-    return x.match(input[pos]) ? nextind(input, pos) - pos : -1
+    return (pos <= lastindex(input) && x.match(input[pos])) ? pos : prevind(input, pos)
 end
 
 function match_terminal(x::Scan{G,T}, input::I, pos::Int)::Int where {G,T,I}
-    return x.match(view(input, pos:length(input)))
+    v = view(input, pos:lastindex(input))
+    return pos + max(x.match(v), 0) - firstindex(v)
 end
 
 function match_terminal(x::Token{G,T}, input::I, pos::Int)::Int where {G,T,I}
-    return x.token == input[pos] ? nextind(input, pos) - pos : -1
+    return x.token == input[pos] ? pos : prevind(input, pos)
 end
 
 function match_terminal(x::Tokens{G,T,I}, input::I, pos::Int)::Int where {G,T,I}
     ii = pos
     ie = lastindex(input)
-    ti = 1
+    ti = firstindex(x.tokens)
     te = lastindex(x.tokens)
     while true
         ii <= ie || break
         ti <= te || break
         input[ii] == x.tokens[ti] || break
+        ti == te && return ii
         ii = nextind(input, ii)
-        ti == te && return ii - pos
         ti = nextind(x.tokens, ti)
     end
-    return -1
+    return prevind(input, pos)
 end
 
 function match_clause!(
@@ -148,11 +149,11 @@ function match_clause!(
     pos::Int,
     st::ParserState{G,T,I},
 )::MatchResult where {G,T,I,IG,TT<:Terminal{IG,T}}
-    len = match_terminal(x, st.input, pos)
-    if len < 0
+    last = match_terminal(x, st.input, pos)
+    if last < pos
         return 0
     else
-        new_match!(Match(id, pos, len, 0, submatch_empty(st)), st)
+        new_match!(Match(id, pos, last, 0, submatch_empty(st)), st)
     end
 end
 
@@ -163,18 +164,20 @@ function match_clause!(x::Seq, id::Int, orig_pos::Int, st::ParserState)::MatchRe
     for c in x.children
         mid = lookup_best_match_id!(pos, c, st)
         mid == 0 && return 0
-        pos += st.matches[mid].len
+        pos = steplastind(st.input, st.matches[mid].last)
     end
 
     # allocate submatches
     pos = orig_pos
+    last = prevind(st.input, pos)
     seq = submatch_start(st)
     for c in x.children
         mid = lookup_best_match_id!(pos, c, st)
         submatch_record!(st, mid)
-        pos += st.matches[mid].len
+        last = st.matches[mid].last
+        pos = steplastind(st.input, last)
     end
-    new_match!(Match(id, orig_pos, pos - orig_pos, 0, seq), st)
+    new_match!(Match(id, orig_pos, last, 0, seq), st)
 end
 
 function match_clause!(x::First, id::Int, pos::Int, st::ParserState)::MatchResult
@@ -183,7 +186,7 @@ function match_clause!(x::First, id::Int, pos::Int, st::ParserState)::MatchResul
         mid = lookup_best_match_id!(pos, c, st)
         mid == 0 && continue
         res = new_match!(
-            Match(id, pos, st.matches[mid].len, i, submatch_record!(st, mid)),
+            Match(id, pos, st.matches[mid].last, i, submatch_record!(st, mid)),
             st,
         )
         break
@@ -193,24 +196,19 @@ end
 
 function match_clause!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
     mid = lookup_best_match_id!(pos, x.follow, st)
-    mid == 0 ? 0 : new_match!(Match(id, pos, 0, 1, submatch_record!(st, mid)), st)
+    mid == 0 ? 0 :
+    new_match!(Match(id, pos, prevind(st.input, pos), 1, submatch_record!(st, mid)), st)
 end
 
 function match_clause!(x::Some, id::Int, pos::Int, st::ParserState)::MatchResult
     mid1 = lookup_best_match_id!(pos, x.item, st)
     mid1 == 0 && return 0
-    mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
+    mid2 = lookup_best_match_id!(steplastind(st.input, st.matches[mid1].last), id, st)
     if mid2 == 0
-        new_match!(Match(id, pos, st.matches[mid1].len, 0, submatch_record!(st, mid1)), st)
+        new_match!(Match(id, pos, st.matches[mid1].last, 0, submatch_record!(st, mid1)), st)
     else
         new_match!(
-            Match(
-                id,
-                pos,
-                st.matches[mid1].len + st.matches[mid2].len,
-                1,
-                submatch_record!(st, mid1, mid2),
-            ),
+            Match(id, pos, st.matches[mid2].last, 1, submatch_record!(st, mid1, mid2)),
             st,
         )
     end
@@ -219,16 +217,10 @@ end
 function match_clause!(x::Many, id::Int, pos::Int, st::ParserState)::MatchResult
     mid1 = lookup_best_match_id!(pos, x.item, st)
     mid1 == 0 && return match_epsilon!(x, id, pos, st)
-    mid2 = lookup_best_match_id!(pos + st.matches[mid1].len, id, st)
+    mid2 = lookup_best_match_id!(steplastind(st.input, st.matches[mid1].last), id, st)
     @assert mid2 != 0 "Many did not match, but it should have had!"
     new_match!(
-        Match(
-            id,
-            pos,
-            st.matches[mid1].len + st.matches[mid2].len,
-            1,
-            submatch_record!(st, mid1, mid2),
-        ),
+        Match(id, pos, st.matches[mid2].last, 1, submatch_record!(st, mid1, mid2)),
         st,
     )
 end
@@ -236,7 +228,7 @@ end
 function match_clause!(x::Tie, id::Int, pos::Int, st::ParserState)::MatchResult
     mid = lookup_best_match_id!(pos, x.tuple, st)
     mid == 0 ? 0 :
-    new_match!(Match(id, pos, st.matches[mid].len, 1, submatch_record!(st, mid)), st)
+    new_match!(Match(id, pos, st.matches[mid].last, 1, submatch_record!(st, mid)), st)
 end
 
 
@@ -245,11 +237,12 @@ end
 #
 
 match_epsilon!(x::Clause, id::Int, pos::Int, st::ParserState) =
-    new_match!(Match(id, pos, 0, 0, submatch_empty(st)), st)
+    new_match!(Match(id, pos, prevind(st.input, pos), 0, submatch_empty(st)), st)
 
 function match_epsilon!(x::FollowedBy, id::Int, pos::Int, st::ParserState)
-    mid = lookup_best_match_id!(pos[], x.follow, st)
-    mid == 0 ? 0 : new_match!(Match(id, pos, 0, 1, submatch_record!(st, mid)), st)
+    mid = lookup_best_match_id!(pos, x.follow, st)
+    mid == 0 ? 0 :
+    new_match!(Match(id, pos, prevind(st.input, pos), 1, submatch_record!(st, mid)), st)
 end
 
 function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)
@@ -257,7 +250,8 @@ function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)
     # NotFollowedBy clauses is disallowed by the error thrown by
     # can_match_epsilon(::NotFollowedBy, ...)
     mid = lookup_best_match_id!(pos, x.reserved, st)
-    mid != 0 ? 0 : new_match!(Match(id, pos, 0, 0, submatch_empty(st)), st)
+    mid != 0 ? 0 :
+    new_match!(Match(id, pos, prevind(st.input, pos), 0, submatch_empty(st)), st)
 end
 
 
@@ -266,7 +260,7 @@ end
 #
 
 UserMatch(id::Int, m::Match, submatches::Vector{Int}, st::ParserState) =
-    UserMatch(st.grammar.names[id], m.pos, m.len, view_match(st, m), submatches)
+    UserMatch(st.grammar.names[id], m.first, m.last, view_match(st, m), submatches)
 
 function user_view(::Clause, id::Int, mid::Int, st::ParserState)
     # generic case
@@ -279,13 +273,13 @@ function user_view(x::Union{Seq,First,FollowedBy}, id::Int, mid::Int, st::Parser
 end
 
 function user_view(x::Some, id::Int, mid::Int, st::ParserState)
-    len = 1
+    items = 1
     m = mid
     while st.matches[m].option_idx == 1
-        len += 1
+        items += 1
         m = submatches(st, m)[2]
     end
-    res = Vector{Int}(undef, len)
+    res = Vector{Int}(undef, items)
     m = mid
     idx = 1
     while st.matches[m].option_idx == 1
@@ -298,13 +292,13 @@ function user_view(x::Some, id::Int, mid::Int, st::ParserState)
 end
 
 function user_view(x::Many, id::Int, mid::Int, st::ParserState)
-    len = 0
+    items = 0
     m = mid
     while st.matches[m].option_idx == 1
-        len += 1
+        items += 1
         m = submatches(st, m)[2]
     end
-    res = Vector{Int}(undef, len)
+    res = Vector{Int}(undef, items)
     m = mid
     idx = 1
     while st.matches[m].option_idx == 1

@@ -35,7 +35,7 @@ abstract type Terminal{G,T} <: Clause{G,T} end
 $(TYPEDEF)
 
 A single terminal. Matches a token from the input stream where the `match`
-function returns `true`.
+function returns `true`, otherwise it returns `false`.
 
 # Fields
 $(TYPEDFIELDS)
@@ -49,9 +49,9 @@ $(TYPEDEF)
 
 A single terminal, possibly made out of multiple input tokens.
 
-Given the input stream and a position in it, the `match` function scans the
-input forward and returns the length of the terminal starting at the position.
-In case there's no match, it returns a negative value.
+Given the input stream view, the `match` function scans the input forward and
+returns the position of the last item of the terminal starting at the beginning
+of the stream. In case there's no match, it returns a zero.
 
 # Fields
 $(TYPEDFIELDS)
@@ -235,10 +235,10 @@ struct Match
     clause::Int
 
     "Where the match started?"
-    pos::Int
+    first::Int
 
-    "How long is the match?"
-    len::Int
+    "What is the last item of the match? (In case of empty match, this MUST be the previous index before `first`, i.e., `prevind(input, first)`.)"
+    last::Int
 
     "Which possibility (given by the clause) did we match?"
     option_idx::Int
@@ -256,19 +256,19 @@ struct Match
     parent::Int
 end
 
-Match(c::Int, p::Int, l::Int, o::Int, s::Int) = Match(c, p, l, o, s, 0, 0, 0)
+Match(c::Int, f::Int, l::Int, o::Int, s::Int) = Match(c, f, l, o, s, 0, 0, 0)
 
 Match(
     m::Match;
     clause::Int = m.clause,
-    pos::Int = m.pos,
-    len::Int = m.len,
+    first::Int = m.first,
+    last::Int = m.last,
     option_idx::Int = m.option_idx,
     submatches::Int = m.submatches,
     left::Int = m.left,
     right::Int = m.right,
     parent::Int = m.parent,
-) = Match(clause, pos, len, option_idx, submatches, left, right, parent)
+) = Match(clause, first, last, option_idx, submatches, left, right, parent)
 
 """
 $(TYPEDEF)
@@ -283,10 +283,10 @@ struct UserMatch{G,S}
     rule::G
 
     "Where the match started?"
-    pos::Int
+    first::Int
 
-    "How long is the match?"
-    len::Int
+    "What is the last item of the match? (In case of empty match, this is the previous index before `first`.)"
+    last::Int
 
     "View of the matched part of the input, usually a `SubArray` or `SubString`."
     view::S

@@ -1,4 +1,6 @@
 
+steplastind(data, last) = last > lastindex(data) ? lastindex(data) : nextind(data, last)
+
 function lookup_best_match_id!(
     pos::Int,
     clause::Int,
@@ -29,7 +31,7 @@ end
 function new_match!(match::Match, st::ParserState)
     updated = false
 
-    best = match_find!(st, match.clause, match.pos)
+    best = match_find!(st, match.clause, match.first)
 
     if best == 0 ||
        better_match_than(st.grammar.clauses[match.clause], match, st.matches[best])
@@ -60,8 +62,9 @@ Take a [`Grammar`](@ref) and an indexable input sequence (typically `Vector` or
 grammar productions.
 
 The `input` must be random-indexable (because PikaParsers require a lot of
-random indexing). In particular, the type must support Int index computation
-with `firstindex`, `lastindex`, `prevind`, `nextind`, and a working `+`.
+random indexing) using Int indexes, must support `firstindex`, `lastindex`,
+`prevind`, `nextind`, index arithmetics with `+` and `-`, and indexes in
+`view`s must be the same as in original container except for a constant offset.
 
 # Lexing and fast terminal matching
 
@@ -71,10 +74,10 @@ matched terminals via a callback. The function is called exactly once for each
 position in `input` in reverse order (i.e., the indexes will start at
 `lastindex(input)` and continue using `prevind` all the way to
 `firstindex(input)`), which can be utilized by the application for
-optimization).  The call parameters consist of the input vector, position in
+optimization. The call parameters consist of the input vector, position in
 the input vector, and a "report" function used to send back a clause ID (of
-same type as `G` in `typeof(grammar)`) and the length of the terminal matches
-that can found at that position. Calls to the reporting function can be
+same type as `G` in `typeof(grammar)`) and the last item of the terminal match
+that can starts at that position. Calls to the reporting function can be
 repeated if more terminal types match. Terminals not reported by the calls to
 `fast_match` will not be matched.
 
@@ -89,8 +92,7 @@ then automatically used as a basis for fast matching.
 # Caveats
 
 Take care when indexing `String`s. With UTF-8, not all codepoints may
-necessarily have length 1. Illustratively, the example below may easily break
-when processing letters or digits that are longer than 1 byte.
+necessarily have length 1.
 
 If unsure, you may always `collect` the strings to vectors of `Char`s
 (basically converting to UTF-32), where each character occupies precisely one
@@ -110,7 +112,7 @@ span the whole input.
     parse(
         g,
         "abcde123",
-        (input, i, match) -> isdigit(input[i]) ? match(:digit, 1) : match(:letter, 1),
+        (input, i, match) -> isdigit(input[i]) ? match(:digit, i) : match(:letter, i),
     )
 
 """
@@ -141,8 +143,8 @@ function parse(
             fast_match(
                 input,
                 i,
-                (rid::G, len::Int) -> let cl = grammar.idx[rid]
-                    new_match!(Match(cl, i, len, 0, submatch_empty(st)), st)
+                (rid::G, last::Int) -> let cl = grammar.idx[rid]
+                    new_match!(Match(cl, i, last, 0, submatch_empty(st)), st)
                 end,
             )
         end
@@ -204,17 +206,18 @@ parsing terminals where another terminal was already parsed successfully.
 """
 function lex(g::Grammar{G,T}, input::I)::Vector{Vector{Tuple{G,Int}}} where {G,T,I}
     q = PikaQueue(lastindex(input))
-    push!(q, 1)
-    res = [Vector{Tuple{G,Int}}() for _ = 1:lastindex(input)] # tricky: do not fill()
+    push!(q, firstindex(input))
+    res = [Vector{Tuple{G,Int}}() for _ = firstindex(input):lastindex(input)] # tricky: do not fill()!
     while !isempty(q)
         pos = pop!(q)
         for tidx in g.terminals
-            m = match_terminal(g.clauses[tidx], input, pos)
-            if m >= 0
-                push!(res[pos], tuple(g.names[tidx], m))
+            mlast = match_terminal(g.clauses[tidx], input, pos)
+            if mlast >= pos
+                push!(res[pos], tuple(g.names[tidx], mlast))
             end
-            if m > 0 && pos + m <= length(input)
-                push!(q, pos + m)
+            nxt = steplastind(input, mlast)
+            if nxt > pos && nxt <= lastindex(input)
+                push!(q, nxt)
             end
         end
     end
@@ -234,8 +237,8 @@ parsing, thus saving a lot of time.
 """
 function parse_lex(g::Grammar{G,T}, input::I)::ParserState{G,T,I} where {G,T,I}
     lexemes = lex(g, input)
-    fm = (_, i, cb) -> for (rid, len) in lexemes[i]
-        cb(rid, len)
+    fm = (_, i, cb) -> for (rid, last) in lexemes[i]
+        cb(rid, last)
     end
     return parse(g, input, fm)
 end

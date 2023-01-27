@@ -141,7 +141,7 @@ function match_insert!(st::ParserState, nmid::Int)
     mid = st.memo_root
     while true
         m = st.matches[mid]
-        if nm.pos < m.pos || (nm.pos == m.pos && nm.clause > m.clause)
+        if nm.first < m.first || (nm.first == m.first && nm.clause > m.clause)
             if m.left == 0
                 # append left
                 adjust_match!(st, nmid, parent = mid)
@@ -152,7 +152,7 @@ function match_insert!(st::ParserState, nmid::Int)
                 # continue left
                 mid = m.left
             end
-        elseif nm.pos > m.pos || (nm.pos == m.pos && nm.clause < m.clause)
+        elseif nm.first > m.first || (nm.first == m.first && nm.clause < m.clause)
             if m.right == 0
                 # append right
                 adjust_match!(st, nmid, parent = mid)
@@ -186,12 +186,12 @@ function match_find!(st::ParserState, clause::Int, pos::Int)::MatchResult
     mid == 0 && return 0
     while true
         m = st.matches[mid]
-        if pos == m.pos && clause == m.clause
+        if pos == m.first && clause == m.clause
             match_splay!(st, mid)
             return mid
         end
 
-        nmid = pos < m.pos || (pos == m.pos && clause > m.clause) ? m.left : m.right
+        nmid = pos < m.first || (pos == m.first && clause > m.clause) ? m.left : m.right
         if nmid == 0
             match_splay!(st, mid)
             return 0

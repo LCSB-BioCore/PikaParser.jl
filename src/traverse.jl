@@ -19,7 +19,7 @@ $(TYPEDSIGNATURES)
 Get a view of input that corresponds to the given `match`.
 """
 view_match(st::ParserState, match::Union{Match,UserMatch}) =
-    view(st.input, match.pos:match.pos+match.len-1)
+    view(st.input, match.first:match.last)
 
 """
 $(TYPEDSIGNATURES)
