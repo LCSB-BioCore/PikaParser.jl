@@ -41,6 +41,7 @@ end
 
     # lexing shouldn't make too much tokens
     @test sum(length.(P.lex(g, input))) == 5
+    @test isempty(P.lex(g, ""))
 
     p = P.parse_lex(g, input)
 
