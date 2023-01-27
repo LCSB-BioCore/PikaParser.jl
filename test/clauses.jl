@@ -91,9 +91,11 @@ end
 end
 
 @testset "Corner-case epsilon matches" begin
+    str = "whateveρ"
+
     rules = Dict(:x => P.followed_by(P.epsilon))
 
-    p = P.parse(P.make_grammar([:x], P.flatten(rules, Char)), "whatever")
+    p = P.parse(P.make_grammar([:x], P.flatten(rules, Char)), str)
 
     @test P.find_match_at!(p, :x, 1) != 0
     @test P.find_match_at!(p, :x, 8) != 0
@@ -102,7 +104,14 @@ end
 
     # tie epsilon match
     rules = Dict(:x => P.tie(P.epsilon))
-    p = P.parse(P.make_grammar([:x], P.flatten(rules, Char)), "whatever")
+    p = P.parse(P.make_grammar([:x], P.flatten(rules, Char)), str)
 
     @test P.traverse_match(p, P.find_match_at!(p, :x, 1)) == :(x())
+
+    rules = Dict(:x => P.end_of_input)
+    p = P.parse(P.make_grammar([:x], P.flatten(rules, Char)), str)
+
+    @test P.find_match_at!(p, :x, firstindex(str)) == 0
+    @test P.find_match_at!(p, :x, lastindex(str)) == 0
+    @test P.find_match_at!(p, :x, nextind(str, lastindex(str))) != 0
 end

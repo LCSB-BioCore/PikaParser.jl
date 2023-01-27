@@ -46,6 +46,7 @@ rechildren(x::Scan, t::DataType, v::Vector) = Scan{valtype(v),t}(x.match)
 rechildren(x::Token, t::DataType, v::Vector) = Token{valtype(v),t}(x.token)
 rechildren(x::Tokens, t::DataType, v::Vector) =
     Tokens{valtype(v),t,typeof(x.tokens)}(x.tokens)
+rechildren(x::EndOfInput, t::DataType, v::Vector) = EndOfInput{valtype(v),t}()
 rechildren(x::Epsilon, t::DataType, v::Vector) = Epsilon{valtype(v),t}()
 rechildren(x::Fail, t::DataType, v::Vector) = Fail{valtype(v),t}()
 rechildren(x::Seq, t::DataType, v::Vector) = Seq{valtype(v),t}(v)
@@ -97,7 +98,7 @@ better_match_than(::Clause, new::Match, old::Match) = new.last > old.last
 
 
 can_match_epsilon(x::Union{Satisfy,Scan,Token,Tokens,Fail}, ::Vector{Bool}) = false
-can_match_epsilon(x::Epsilon, ::Vector{Bool}) = true
+can_match_epsilon(x::Union{Epsilon,EndOfInput}, ::Vector{Bool}) = true
 can_match_epsilon(x::Seq, ch::Vector{Bool}) = all(ch)
 can_match_epsilon(x::First, ch::Vector{Bool}) =
     isempty(ch) ? false :
@@ -236,16 +237,21 @@ end
 # Epsilon matches
 #
 
-match_epsilon!(x::Clause, id::Int, pos::Int, st::ParserState) =
+match_epsilon!(x::Clause, id::Int, pos::Int, st::ParserState)::MatchResult =
     new_match!(Match(id, pos, prevind(st.input, pos), 0, submatch_empty(st)), st)
 
-function match_epsilon!(x::FollowedBy, id::Int, pos::Int, st::ParserState)
+function match_epsilon!(x::EndOfInput, id::Int, pos::Int, st::ParserState)::MatchResult
+    pos <= lastindex(st.input) ? 0 :
+    new_match!(Match(id, pos, prevind(st.input, pos), 0, submatch_empty(st)), st)
+end
+
+function match_epsilon!(x::FollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
     mid = lookup_best_match_id!(pos, x.follow, st)
     mid == 0 ? 0 :
     new_match!(Match(id, pos, prevind(st.input, pos), 1, submatch_record!(st, mid)), st)
 end
 
-function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)
+function match_epsilon!(x::NotFollowedBy, id::Int, pos::Int, st::ParserState)::MatchResult
     # This might technically cause infinite recursion, byt a cycle of
     # NotFollowedBy clauses is disallowed by the error thrown by
     # can_match_epsilon(::NotFollowedBy, ...)

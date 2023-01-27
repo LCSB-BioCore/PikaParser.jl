@@ -15,6 +15,8 @@ function lookup_best_match_id!(
             return match_epsilon!(cls, clause, pos, st)
         elseif cls isa NotFollowedBy{Int,T}
             return match_epsilon!(cls, clause, pos, st)
+        elseif cls isa EndOfInput{Int,T}
+            return match_epsilon!(cls, clause, pos, st)
         elseif cls isa Epsilon{Int,T}
             return match_epsilon!(cls, clause, pos, st)
         elseif cls isa Many{Int,T}

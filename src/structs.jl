@@ -16,6 +16,7 @@ Currently implemented clauses:
 - [`Tokens`](@ref)
 - [`Epsilon`](@ref)
 - [`Fail`](@ref)
+- [`EndOfInput`](@ref)
 - [`Seq`](@ref)
 - [`First`](@ref)
 - [`NotFollowedBy`](@ref)
@@ -83,6 +84,13 @@ $(TYPEDFIELDS)
 struct Tokens{G,T,I} <: Terminal{G,T}
     tokens::I
 end
+
+"""
+$(TYPEDEF)
+
+Matches at the end of the input.
+"""
+struct EndOfInput{G,T} <: Clause{G,T} end
 
 """
 $(TYPEDEF)

@@ -49,6 +49,17 @@ function tokens(xs::I) where {I}
 end
 
 """
+    end_of_input :: Clause
+
+An [`EndOfInput`](@ref) clause. Translate to strongly typed grammar with [`flatten`](@ref).
+
+# Example
+
+    whole_file = first(:file_contents, end_of_input)
+"""
+const end_of_input = EndOfInput{Any,Any}()
+
+"""
     epsilon :: Clause
 
 An [`Epsilon`](@ref) clause. Translate to strongly typed grammar with [`flatten`](@ref).

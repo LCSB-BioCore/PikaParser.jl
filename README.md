@@ -74,14 +74,13 @@ P.find_match_at!(p, :expr, 1)
 ```
 ...which returns an index in the match table (if found), such as `45`.
 
-You can have a look at the match: `p.matches[45]` should return:
-```julia
-PikaParser.Match(10, 1, 13, 2, [44])
-```
-where `10` is the renumbered rule ID for `:expr`, `1` is the starting position
-in the input, `13` is the length of the match (here, that is the whole input);
-`2` is the option index (in this case, it points to `:expr` option 2, which is
-`:minusexpr`), and 44 is the submatch of `:minusexpr`.
+You can have a look at the match: `p.matches[45]` should return: ```julia
+PikaParser.Match(10, 1, 13, 2, 52, 0, 41, 0) ``` where `10` is the renumbered
+rule ID for `:expr`, `1` is the starting position of the match in the input,
+`13` is the last position of the match (here, that means the whole input); `2`
+is the option index (in this case, it points to `:expr` option 2, which is
+`:minusexpr`). The rest of the `Match` structure is used for internal values
+that organize the match tree and submatches.
 
 ### Recovering parsed ASTs
 
