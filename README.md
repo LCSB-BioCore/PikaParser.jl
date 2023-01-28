@@ -13,8 +13,6 @@ Pika parsers are pretty fast, they are easy to specify, carry the ability to
 unambiguously match all PEG grammars including the left-recursive ones, and
 provide great mechanisms for parsing error recovery.
 
-The code is new, **feedback is welcome**.
-
 ## Example
 
 ```julia
@@ -135,3 +133,14 @@ P.traverse_match(p, P.find_match_at!(p, :expr, 1),
 ```
 
 You should get the expectable result (`-581`).
+
+#### Acknowledgements
+
+`PikaParser.jl` was developed at the Luxembourg Centre for Systems
+Biomedicine of the University of Luxembourg
+([uni.lu/lcsb](https://www.uni.lu/lcsb)).
+The development was supported by European Union's Horizon 2020 Programme under
+PerMedCoE project ([permedcoe.eu](https://www.permedcoe.eu/)),
+agreement no. 951773.
+
+<img src="docs/src/assets/unilu.svg" alt="Uni.lu logo" height="64px">   <img src="docs/src/assets/lcsb.svg" alt="LCSB logo" height="64px">   <img src="docs/src/assets/permedcoe.svg" alt="PerMedCoE logo" height="64px">
