@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Example: Parsing Scheme · PikaParser.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">PikaParser.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">README</a></li><li><a class="tocitem" href="../json/">Example: Parsing JSON</a></li><li class="is-active"><a class="tocitem" href>Example: Parsing Scheme</a></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Example: Parsing Scheme</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Example: Parsing Scheme</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/LCSB-BioCore/PikaParser.jl/blob/master/docs/src/scheme.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Example:-Parsing-Scheme"><a class="docs-heading-anchor" href="#Example:-Parsing-Scheme">Example: Parsing Scheme</a><a id="Example:-Parsing-Scheme-1"></a><a class="docs-heading-anchor-permalink" href="#Example:-Parsing-Scheme" title="Permalink"></a></h1><p>Here we prepare a small parser for a very simple Scheme-like language.</p><p>The main features of the parser include:</p><ul><li>handling whitespace</li><li>parsing number-containing identifiers and numbers while avoiding ambiguities using <code>not_followed_by</code></li><li>error recovery by manually traversing the memo table</li></ul><p>We choose not to implement any of the Scheme data types except numbers and identifiers; also all top-level expressions must be parenthesized &quot;command&quot; S-expressions.</p><pre><code class="language-julia hljs">import PikaParser as P
+
+rules = Dict(
+    :letter =&gt; P.satisfy(isletter),
+    :digit =&gt; P.satisfy(isdigit),
+    :ident =&gt; P.tie(
+        P.seq(
+            P.seq(:letter),
+            P.many(:inIdent =&gt; P.first(:letter, :digit, P.token(&#39;-&#39;))),
+            P.not_followed_by(:inIdent),
+        ),
+    ),
+    :number =&gt; P.seq(P.some(:digit), P.not_followed_by(:inIdent)),
+    :ws =&gt; P.many(P.satisfy(isspace)),
+    :popen =&gt; P.seq(P.token(&#39;(&#39;), :ws),
+    :pclose =&gt; P.seq(P.token(&#39;)&#39;), :ws),
+    :sexpr =&gt; P.seq(:popen, :insexpr =&gt; P.many(:scheme), :pclose),
+    :scheme =&gt; P.seq(:basic =&gt; P.first(:number, :ident, :sexpr), :ws),
+    :top =&gt; P.seq(:ws, :sexpr), #support leading blanks
+);</code></pre><p>Notice that the rules &quot;clean&quot; the space characters <em>after</em> each sensible token is matched, except for <code>:top</code> that is able to clean up the leading spaces.  This way prevents unnecessary checking (and redundant matching) of the tokens, and buildup of uninteresting entries in the memo table.</p><p>Let&#39;s test the grammar on a piece of source code that contains lots of whitespace and some errors.</p><pre><code class="language-julia hljs">p = P.parse(
+    P.make_grammar([:top], P.flatten(rules, Char)),
+    &quot;&quot;&quot;
+(plus 1 2 3)
+(minus 1 2(plus 3 2)  ) woohoo extra parenthesis here )
+(complex
+  id3nt1f13r5)
+(invalid 1d3n7)
+(something
+  1
+  2
+  valid)
+(straight (out (missing(parenthesis error))
+(apply (make-function) (make-data))
+&quot;&quot;&quot;,
+);</code></pre><p>Prepare a folding function:</p><pre><code class="language-julia hljs">fold_scheme(m, p, s) =
+    m.rule == :number ? parse(Int, m.view) :
+    m.rule == :ident ? Symbol(m.view) :
+    m.rule == :insexpr ? Expr(:call, :S, s...) :
+    m.rule == :sexpr ? s[2] : m.rule == :top ? s[2] : length(s) &gt; 0 ? s[1] : nothing;</code></pre><p>We can run through all <code>top</code> matches, tracking the position where we would expect the next match:</p><pre><code class="language- hljs">next_pos = 1
+while next_pos &lt;= lastindex(p.input)
+    global next_pos
+    pos = next_pos
+    mid = 0
+    while pos &lt;= lastindex(p.input) # try to find a match
+        mid = P.find_match_at!(p, :top, pos)
+        mid != 0 &amp;&amp; break
+        pos += 1
+    end
+    pos &gt; next_pos &amp;&amp; # if we skipped something, report it
+        @error &quot;Got parsing problems&quot; p.input[next_pos:prevind(p.input, pos)]
+    mid == 0 &amp;&amp; break # in case we have found a match, print its AST
+    value = P.traverse_match(p, mid, fold = fold_scheme)
+    @info &quot;Got a command&quot; value
+    m = p.matches[mid] # skip the whole match and continue
+    next_pos = m.pos + m.len
+end</code></pre><p>We can see that the unparseable parts of input were correctly skipped, while the sensible parts were interpreted as expressions. The chosen error recovery method might not be optimal in the case of missing parentheses – as an improvement, one might choose to utilize another grammar rule to find a good part of input to discard (e.g., everything to the end of the line).</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../json/">« Example: Parsing JSON</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Saturday 28 January 2023 15:53">Saturday 28 January 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
