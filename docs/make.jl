@@ -16,6 +16,7 @@ makedocs(
     modules = [PikaParser],
     clean = false,
     format = Documenter.HTML(
+        ansicolor = true,
         canonical = "https://lcsb-biocore.github.io/PikaParser.jl/stable/",
     ),
     sitename = "PikaParser.jl",
