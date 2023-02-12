@@ -3,7 +3,11 @@ using Documenter, Literate, PikaParser
 examples = filter(x -> endswith(x, ".jl"), readdir(joinpath(@__DIR__, "src"), join = true))
 
 for example in examples
-    Literate.markdown(example, joinpath(@__DIR__, "src"))
+    Literate.markdown(
+        example,
+        joinpath(@__DIR__, "src"),
+        repo_root_url = "https://github.com/LCSB-BioCore/PikaParser.jl/blob/master",
+    )
 end
 
 example_mds = first.(splitext.(basename.(examples))) .* ".md"
@@ -11,11 +15,13 @@ example_mds = first.(splitext.(basename.(examples))) .* ".md"
 makedocs(
     modules = [PikaParser],
     clean = false,
-    format = Documenter.HTML(),
+    format = Documenter.HTML(
+        canonical = "https://lcsb-biocore.github.io/PikaParser.jl/stable/",
+    ),
     sitename = "PikaParser.jl",
     linkcheck = false,
     pages = ["README" => "index.md"; example_mds; "Reference" => "reference.md"],
-    strict = [:missing_docs, :cross_references],
+    strict = [:missing_docs, :cross_references, :example_block],
 )
 
 deploydocs(
