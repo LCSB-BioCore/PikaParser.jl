@@ -48,7 +48,7 @@ p = P.parse(
 (plus 1 2 3)
 (minus 1 2(plus 3 2)  ) woohoo extra parenthesis here )
 (complex
-  id3nt1f13r5)
+  id3nt1f13r5 αβγδ भरत kůň)
 (invalid 1d3n7)
 (something
   1
@@ -78,15 +78,18 @@ while next_pos <= lastindex(p.input)
     while pos <= lastindex(p.input) # try to find a match
         mid = P.find_match_at!(p, :top, pos)
         mid != 0 && break
-        pos += 1
+        pos = nextind(p.input, pos)
     end
     pos > next_pos && # if we skipped something, report it
         @error "Got parsing problems" p.input[next_pos:prevind(p.input, pos)]
-    mid == 0 && break # in case we have found a match, print its AST
-    value = P.traverse_match(p, mid, fold = fold_scheme)
-    @info "Got a command" value
-    m = p.matches[mid] # skip the whole match and continue
-    next_pos = m.pos + m.len
+    if mid == 0
+        break # if we skipped all the way to the end, quit
+    else # we have an actual match, print it.
+        value = P.traverse_match(p, mid, fold = fold_scheme)
+        @info "Got a toplevel value" value
+        m = p.matches[mid] # skip the whole match and continue
+        next_pos = nextind(p.input, m.last)
+    end
 end
 
 # We can see that the unparseable parts of input were correctly skipped, while
