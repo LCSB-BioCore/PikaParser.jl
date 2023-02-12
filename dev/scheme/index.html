@@ -57,24 +57,24 @@ while next_pos &lt;= lastindex(p.input)
         m = p.matches[mid] # skip the whole match and continue
         next_pos = nextind(p.input, m.last)
     end
-end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Info: Got a toplevel value
-└   value = :(S(plus, 1, 2, 3))
-┌ Info: Got a toplevel value
-└   value = :(S(minus, 1, 2, S(plus, 3, 2)))
-┌ Error: Got parsing problems
-│   p.input[next_pos:prevind(p.input, pos)] = &quot;woohoo extra parenthesis here )&quot;
-└ @ Main scheme.md:97
-┌ Info: Got a toplevel value
-└   value = :(S(complex, id3nt1f13r5, αβγδ, भरत, kůň))
-┌ Error: Got parsing problems
-│   p.input[next_pos:prevind(p.input, pos)] = &quot;(invalid 1d3n7)&quot;
-└ @ Main scheme.md:97
-┌ Info: Got a toplevel value
-└   value = :(S(something, 1, 2, valid))
-┌ Error: Got parsing problems
-│   p.input[next_pos:prevind(p.input, pos)] = &quot;(straight (out&quot;
-└ @ Main scheme.md:97
-┌ Info: Got a toplevel value
-└   value = :(S(missing, S(parenthesis, error)))
-┌ Info: Got a toplevel value
-└   value = :(S(apply, S(var&quot;make-function&quot;), S(var&quot;make-data&quot;)))</code></pre><p>We can see that the unparseable parts of input were correctly skipped, while the sensible parts were interpreted as expressions. The chosen error recovery method might not be optimal in the case of missing parentheses – as an improvement, one might choose to utilize another grammar rule to find a good part of input to discard (e.g., everything to the end of the line).</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../json/">« Example: Parsing JSON</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Sunday 12 February 2023 16:13">Sunday 12 February 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr36"><span class="sgr1">┌ Info: </span></span>Got a toplevel value
+<span class="sgr36"><span class="sgr1">└ </span></span>  value = :(S(plus, 1, 2, 3))
+<span class="sgr36"><span class="sgr1">┌ Info: </span></span>Got a toplevel value
+<span class="sgr36"><span class="sgr1">└ </span></span>  value = :(S(minus, 1, 2, S(plus, 3, 2)))
+<span class="sgr91"><span class="sgr1">┌ Error: </span></span>Got parsing problems
+<span class="sgr91"><span class="sgr1">│ </span></span>  p.input[next_pos:prevind(p.input, pos)] = &quot;woohoo extra parenthesis here )&quot;
+<span class="sgr91"><span class="sgr1">└ </span></span><span class="sgr90">@ Main scheme.md:97</span>
+<span class="sgr36"><span class="sgr1">┌ Info: </span></span>Got a toplevel value
+<span class="sgr36"><span class="sgr1">└ </span></span>  value = :(S(complex, id3nt1f13r5, αβγδ, भरत, kůň))
+<span class="sgr91"><span class="sgr1">┌ Error: </span></span>Got parsing problems
+<span class="sgr91"><span class="sgr1">│ </span></span>  p.input[next_pos:prevind(p.input, pos)] = &quot;(invalid 1d3n7)&quot;
+<span class="sgr91"><span class="sgr1">└ </span></span><span class="sgr90">@ Main scheme.md:97</span>
+<span class="sgr36"><span class="sgr1">┌ Info: </span></span>Got a toplevel value
+<span class="sgr36"><span class="sgr1">└ </span></span>  value = :(S(something, 1, 2, valid))
+<span class="sgr91"><span class="sgr1">┌ Error: </span></span>Got parsing problems
+<span class="sgr91"><span class="sgr1">│ </span></span>  p.input[next_pos:prevind(p.input, pos)] = &quot;(straight (out&quot;
+<span class="sgr91"><span class="sgr1">└ </span></span><span class="sgr90">@ Main scheme.md:97</span>
+<span class="sgr36"><span class="sgr1">┌ Info: </span></span>Got a toplevel value
+<span class="sgr36"><span class="sgr1">└ </span></span>  value = :(S(missing, S(parenthesis, error)))
+<span class="sgr36"><span class="sgr1">┌ Info: </span></span>Got a toplevel value
+<span class="sgr36"><span class="sgr1">└ </span></span>  value = :(S(apply, S(var&quot;make-function&quot;), S(var&quot;make-data&quot;)))</code></pre><p>We can see that the unparseable parts of input were correctly skipped, while the sensible parts were interpreted as expressions. The chosen error recovery method might not be optimal in the case of missing parentheses – as an improvement, one might choose to utilize another grammar rule to find a good part of input to discard (e.g., everything to the end of the line).</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../json/">« Example: Parsing JSON</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Sunday 12 February 2023 16:24">Sunday 12 February 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
