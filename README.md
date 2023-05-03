@@ -1,5 +1,5 @@
 
-# PikaParser.jl
+# PikaParser.jl -- Parser library for Julia
 
 | Build status | Documentation |
 |:---:|:---:|
