@@ -14,6 +14,8 @@
 #   to remove unnecessary spaces)
 # - support for numbers is very ad-hoc, `Float64`-only
 # - the escape sequences allowed in strings are rather incomplete
+#
+# ## Preparing the grammar
 
 import PikaParser as P
 
@@ -43,6 +45,8 @@ rules = Dict(
     :json => P.first(:obj, :array, :string, :number, :t, :f, :null),
 );
 
+# ## Making the "fold" function
+#
 # To manage the folding easily, we keep the fold functions in a data structure
 # with the same order as `rules`:
 folds = Dict(
@@ -69,12 +73,14 @@ default_fold(v, subvals) = isempty(subvals) ? nothing : subvals[1]
 
 g = P.make_grammar([:json], P.flatten(rules, Char));
 
+# ## Parsing JSON
+#
 # Let's parse a simple JSONish string that demonstrates most of the rules:
 input = """{"something":123,"other":false,"refs":[1,-2.345,[],{},true,false,null,[1,2,3,"haha"],{"is\\"Finished\\"":true}]}""";
 
 p = P.parse(g, input);
 
-# Let's build a Julia JSON-like structure:
+# From the result we can build a Julia JSON-like structure:
 result = P.traverse_match(
     p,
     P.find_match_at!(p, :json, 1),
