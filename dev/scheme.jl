@@ -12,6 +12,8 @@
 # We choose not to implement any of the Scheme data types except numbers and
 # identifiers; also all top-level expressions must be parenthesized "command"
 # S-expressions.
+#
+# ## Implementing the grammar
 
 import PikaParser as P
 
@@ -39,6 +41,8 @@ rules = Dict(
 # spaces.  This way prevents unnecessary checking (and redundant matching) of
 # the tokens, and buildup of uninteresting entries in the memo table.
 
+# ## Parsing input
+#
 # Let's test the grammar on a piece of source code that contains lots of
 # whitespace and some errors.
 
@@ -67,6 +71,8 @@ fold_scheme(m, p, s) =
     m.rule == :insexpr ? Expr(:call, :S, s...) :
     m.rule == :sexpr ? s[2] : m.rule == :top ? s[2] : length(s) > 0 ? s[1] : nothing;
 
+# ## Recovering from errors and showing partial parses
+#
 # We can run through all `top` matches, tracking the position where we would
 # expect the next match:
 
@@ -81,12 +87,14 @@ while next_pos <= lastindex(p.input)
         pos = nextind(p.input, pos)
     end
     pos > next_pos && # if we skipped something, report it
-        @error "Got parsing problems" p.input[next_pos:prevind(p.input, pos)]
+        println(
+            "Got problems understanding this: $(p.input[next_pos:prevind(p.input, pos)])",
+        )
     if mid == 0
         break # if we skipped all the way to the end, quit
     else # we have an actual match, print it.
         value = P.traverse_match(p, mid, fold = fold_scheme)
-        @info "Got a toplevel value" value
+        println("Got a good value: $value")
         m = p.matches[mid] # skip the whole match and continue
         next_pos = nextind(p.input, m.last)
     end
