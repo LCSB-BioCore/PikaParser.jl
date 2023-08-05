@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Example: Faster parsing with lexers · PikaParser.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link rel="canonical" href="https://lcsb-biocore.github.io/PikaParser.jl/stable/scheme_lex/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">PikaParser.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">README</a></li><li><a class="tocitem" href="../json/">Example: Parsing JSON</a></li><li><a class="tocitem" href="../scheme/">Example: Parsing Scheme</a></li><li class="is-active"><a class="tocitem" href>Example: Faster parsing with lexers</a><ul class="internal"><li><a class="tocitem" href="#Writing-scanners"><span>Writing scanners</span></a></li><li><a class="tocitem" href="#Using-scanners-in-a-grammar"><span>Using scanners in a grammar</span></a></li><li><a class="tocitem" href="#Using-the-scanners-for-lexing-the-input"><span>Using the scanners for lexing the input</span></a></li></ul></li><li><a class="tocitem" href="../reference/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Example: Faster parsing with lexers</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Example: Faster parsing with lexers</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/LCSB-BioCore/PikaParser.jl/blob/master/docs/src/scheme_lex.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Example:-Faster-parsing-with-lexers"><a class="docs-heading-anchor" href="#Example:-Faster-parsing-with-lexers">Example: Faster parsing with lexers</a><a id="Example:-Faster-parsing-with-lexers-1"></a><a class="docs-heading-anchor-permalink" href="#Example:-Faster-parsing-with-lexers" title="Permalink"></a></h1><p>One disadvantage of pika-style parsers is the large amount of redundant intermediate matches that are produced in the right-to-left parsing process. These generally pollute the match table and cause inefficiency.</p><p>PikaParser supports greedily pre-lexing the parser input using the terminals in the grammar, which allows you to produce much more precise terminal matches, thus also more compact match table, and, in result, much <strong>faster</strong> and more robust parser.</p><p>In this example, we simply rewrite the Scheme grammar from <a href="../scheme/">the Scheme tutorial</a> to use <a href="../reference/#PikaParser.scan-Tuple{Function}"><code>PikaParser.scan</code></a> (which allows you to match many interesting kinds of tokens quickly) and then <a href="../reference/#PikaParser.parse_lex-Union{Tuple{I}, Tuple{T}, Tuple{G}, Tuple{PikaParser.Grammar{G, T}, I}} where {G, T, I}"><code>PikaParser.parse_lex</code></a> (which runs the greedy lexing and uses the result for more efficient parsing).</p><p>As the main change, we removed the &quot;simple&quot; matches of <code>:digit</code> and <code>:letter</code> from the grammar, and replaced them with manual matchers of whole tokens.</p><h2 id="Writing-scanners"><a class="docs-heading-anchor" href="#Writing-scanners">Writing scanners</a><a id="Writing-scanners-1"></a><a class="docs-heading-anchor-permalink" href="#Writing-scanners" title="Permalink"></a></h2><p>First, let&#39;s make a very useful helper function that lets us convert any <code>Char</code>-matching function into a scanner. This neatens the grammar code later.</p><p>When constructing the scanner functions, remember that it is important to use the overloaded indexing functions (<code>nextind</code>, <code>prevind</code>, <code>firstindex</code>, <code>lastindex</code>) instead of manually computing the integer indexes. Consider what happens with Unicode strings if you try to get an index like <code>&quot;kůň&quot;[3]</code>! Compute indexes manually only if you are <em>perfectly</em> certain that the input indexing is flat.</p><pre><code class="language-julia hljs">takewhile1(f) = (input) -&gt; begin
+    isempty(input) &amp;&amp; return 0
+    for i in eachindex(input)
+        if !f(input[i])
+            return prevind(input, i)
+        end
+    end
+    return lastindex(input)
+end;</code></pre><p>The situation for matching <code>:ident</code> is a little more complicated – we need a different match on the first letter and there are extra characters to think about. So we just make a specialized function for that:</p><pre><code class="language-julia hljs">function take_ident(input)
+    isempty(input) &amp;&amp; return 0
+    i = firstindex(input)
+    isletter(input[i]) || return 0
+    i = nextind(input, i)
+    while i &lt;= lastindex(input)
+        c = input[i]
+        if !(isletter(c) || isdigit(c) || c == &#39;-&#39;)
+            return prevind(input, i)
+        end
+        i = nextind(input, i)
+    end
+    return lastindex(input)
+end;</code></pre><h2 id="Using-scanners-in-a-grammar"><a class="docs-heading-anchor" href="#Using-scanners-in-a-grammar">Using scanners in a grammar</a><a id="Using-scanners-in-a-grammar-1"></a><a class="docs-heading-anchor-permalink" href="#Using-scanners-in-a-grammar" title="Permalink"></a></h2><p>The grammar becomes slightly simpler than in the original version:</p><pre><code class="language-julia hljs">import PikaParser as P
+
+rules = Dict(
+    :ws =&gt; P.first(:spaces =&gt; P.scan(takewhile1(isspace)), P.epsilon),
+    :popen =&gt; P.seq(P.token(&#39;(&#39;), :ws),
+    :pclose =&gt; P.seq(P.token(&#39;)&#39;), :ws),
+    :sexpr =&gt; P.seq(:popen, :insexpr =&gt; P.many(:scheme), :pclose),
+    :scheme =&gt; P.seq(
+        :basic =&gt; P.first(
+            :number =&gt; P.seq(P.scan(takewhile1(isdigit)), P.not_followed_by(:ident)),
+            :ident =&gt; P.scan(take_ident),
+            :sexpr,
+        ),
+        :ws,
+    ),
+    :top =&gt; P.seq(:ws, :sexpr), #support leading blanks
+);</code></pre><h2 id="Using-the-scanners-for-lexing-the-input"><a class="docs-heading-anchor" href="#Using-the-scanners-for-lexing-the-input">Using the scanners for lexing the input</a><a id="Using-the-scanners-for-lexing-the-input-1"></a><a class="docs-heading-anchor-permalink" href="#Using-the-scanners-for-lexing-the-input" title="Permalink"></a></h2><p>Let&#39;s try the lexing on the same input as in the Scheme example:</p><pre><code class="language-julia hljs">input = &quot;&quot;&quot;
+(plus 1 2 3)
+(minus 1 2(plus 3 2)  ) woohoo extra parenthesis here )
+(complex
+  id3nt1f13r5 αβγδ भरत kůň)
+(invalid 1d3n7)
+(something
+  1
+  2
+  valid)
+(straight (out (missing(parenthesis error))
+(apply (make-function) (make-data))
+&quot;&quot;&quot;;
+grammar = P.make_grammar([:top], P.flatten(rules, Char));
+
+P.lex(grammar, input)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">242-element Vector{Vector{Tuple{Symbol, Int64}}}:
+ [(Symbol(&quot;popen-1&quot;), 1)]
+ [(:ident, 5)]
+ []
+ []
+ []
+ [(:spaces, 6)]
+ [(Symbol(&quot;number-1&quot;), 7)]
+ [(:spaces, 8)]
+ [(Symbol(&quot;number-1&quot;), 9)]
+ [(:spaces, 10)]
+ ⋮
+ []
+ []
+ []
+ []
+ []
+ []
+ [(Symbol(&quot;pclose-1&quot;), 240)]
+ [(Symbol(&quot;pclose-1&quot;), 241)]
+ [(:spaces, 242)]</code></pre><p>The result is a vector of possible terminals that can be matched at given input positions. As a minor victory, you may see that no terminals are matched inside the initial <code>plus</code> token.</p><p>Now, the lexed input could be used via the argument <code>fast_match</code> of <a href="../reference/#PikaParser.parse-Union{Tuple{I}, Tuple{T}, Tuple{G}, Tuple{PikaParser.Grammar{G, T}, I}, Tuple{PikaParser.Grammar{G, T}, I, Any}} where {G, T, I}"><code>PikaParser.parse</code></a>, but usually it is much simpler to have the combined function <a href="../reference/#PikaParser.parse_lex-Union{Tuple{I}, Tuple{T}, Tuple{G}, Tuple{PikaParser.Grammar{G, T}, I}} where {G, T, I}"><code>PikaParser.parse_lex</code></a> do everything:</p><pre><code class="language-julia hljs">p = P.parse_lex(grammar, input);</code></pre><p>The rest is now essentially same as with the <a href="../scheme/">previous Scheme example</a>:</p><pre><code class="language-julia hljs">fold_scheme(m, p, s) =
+    m.rule == :number ? parse(Int, m.view) :
+    m.rule == :ident ? Symbol(m.view) :
+    m.rule == :insexpr ? Expr(:call, :S, s...) :
+    m.rule == :sexpr ? s[2] : m.rule == :top ? s[2] : length(s) &gt; 0 ? s[1] : nothing;
+
+next_pos = 1
+while next_pos &lt;= lastindex(p.input)
+    global next_pos
+    pos = next_pos
+    mid = 0
+    while pos &lt;= lastindex(p.input) # try to find a match
+        mid = P.find_match_at!(p, :top, pos)
+        mid != 0 &amp;&amp; break
+        pos = nextind(p.input, pos)
+    end
+    pos &gt; next_pos &amp;&amp; # if we skipped something, report it
+        println(&quot;Problems with: $(p.input[next_pos:prevind(p.input, pos)])&quot;)
+    if mid == 0
+        break # if we skipped all the way to the end, quit
+    else # we have an actual match, print it.
+        value = P.traverse_match(p, mid, fold = fold_scheme)
+        println(&quot;Parsed OK: $value&quot;)
+        m = p.matches[mid] # skip the whole match and continue
+        next_pos = nextind(p.input, m.last)
+    end
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Parsed OK: S(plus, 1, 2, 3)
+Parsed OK: S(minus, 1, 2, S(plus, 3, 2))
+Problems with: woohoo extra parenthesis here )
+Parsed OK: S(complex, id3nt1f13r5, αβγδ, भरत, kůň)
+Problems with: (invalid 1d3n7)
+Parsed OK: S(something, 1, 2, valid)
+Problems with: (straight (out
+Parsed OK: S(missing, S(parenthesis, error))
+Parsed OK: S(apply, S(var&quot;make-function&quot;), S(var&quot;make-data&quot;))</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../scheme/">« Example: Parsing Scheme</a><a class="docs-footer-nextpage" href="../reference/">Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Saturday 5 August 2023 17:17">Saturday 5 August 2023</span>. Using Julia version 1.9.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
