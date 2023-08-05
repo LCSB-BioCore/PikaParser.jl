@@ -203,8 +203,21 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Greedily find terminals in the input sequence, while avoiding any attempts at
-parsing terminals where another terminal was already parsed successfully.
+Greedily find terminals in the input sequence. For performance and uniqueness
+purposes, terminals are only looked for at stream indexes that follow the final
+indexes of terminals found previously. That allows the lexing process to skip
+many redundant matches that could not ever be found by the grammar.
+
+As a main outcome, this prevents the typical pika-parser behavior when matching
+sequences using [`many`](@ref), where e.g. an identifier like `abcd` also
+produces redundant (and often invalid) matches for `bcd`, `cd` and `d`.
+Colaterally, greedy lexing also creates less tokens in the match table, which
+results in faster parsing.
+
+To produce good terminal matches quickly, use [`scan`](@ref).
+
+In a typical use, this function is best called indirectly via
+[`parse_lex`](@ref).
 """
 function lex(g::Grammar{G,T}, input::I)::Vector{Vector{Tuple{G,Int}}} where {G,T,I}
     q = PikaQueue(lastindex(input))

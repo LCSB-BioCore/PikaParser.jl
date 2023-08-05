@@ -51,8 +51,9 @@ $(TYPEDEF)
 A single terminal, possibly made out of multiple input tokens.
 
 Given the input stream view, the `match` function scans the input forward and
-returns the position of the last item of the terminal starting at the beginning
-of the stream. In case there's no match, it returns a zero.
+returns the position of the last item of the matched terminal (which is assumed
+to start at the beginning of the stream view). In case there's no match, it
+returns zero.
 
 # Fields
 $(TYPEDFIELDS)
