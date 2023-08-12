@@ -55,7 +55,7 @@ An [`EndOfInput`](@ref) clause. Translate to strongly typed grammar with [`flatt
 
 # Example
 
-    whole_file = first(:file_contents, end_of_input)
+    whole_file = seq(:file_contents, end_of_input)
 """
 const end_of_input = EndOfInput{Any,Any}()
 
