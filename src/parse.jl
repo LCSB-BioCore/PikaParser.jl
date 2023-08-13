@@ -21,6 +21,10 @@ function lookup_best_match_id!(
             return match_epsilon!(cls, clause, pos, st)
         elseif cls isa Many{Int,T}
             return match_epsilon!(cls, clause, pos, st)
+        elseif cls isa Seq{Int,T}
+            return match_epsilon!(cls, clause, pos, st)
+        elseif cls isa First{Int,T}
+            return match_epsilon!(cls, clause, pos, st)
         elseif cls isa Tie{Int,T}
             return match_epsilon!(cls, clause, pos, st)
         else
@@ -50,6 +54,7 @@ function new_match!(match::Match, st::ParserState)
     end
 
     for seed in st.grammar.seed_clauses[match.clause]
+        # TODO: can we remove the extra epsilon condition in the next line?
         if updated || st.grammar.can_match_epsilon[seed]
             push!(st.q, seed)
         end

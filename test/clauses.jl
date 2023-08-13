@@ -114,6 +114,12 @@ end
     @test P.find_match_at!(p, :x, firstindex(str)) == 0
     @test P.find_match_at!(p, :x, lastindex(str)) == 0
     @test P.find_match_at!(p, :x, nextind(str, lastindex(str))) != 0
+
+    rules = Dict(:x => P.seq(P.epsilon, :y => P.first(P.token('a'), P.epsilon)))
+    p = P.parse(P.make_grammar([:x, :y], P.flatten(rules, Char)), "b")
+
+    @test P.find_match_at!(p, :x, firstindex(p.input)) != 0
+    @test P.find_match_at!(p, :y, firstindex(p.input)) != 0
 end
 
 @testset "Invalid epsilon matches are avoided" begin
