@@ -60,7 +60,7 @@ rechildren(x::Tie, t::DataType, v::Vector) = Tie{valtype(v),t}(Base.first(v))
 
 
 function seeded_by(x::Clause{G}, ::Vector{Bool})::Vector{G} where {G}
-    # generic case
+    # generic case (also holds for terminals)
     G[]
 end
 
@@ -69,23 +69,10 @@ function seeded_by(x::Seq{G}, ch::Vector{Bool})::Vector{G} where {G}
     x.children[begin:first_nonempty]
 end
 
-function seeded_by(x::First{G}, ::Vector{Bool})::Vector{G} where {G}
-    child_clauses(x)
-end
-
-function seeded_by(x::FollowedBy{G}, ::Vector{Bool})::Vector{G} where {G}
-    child_clauses(x)
-end
-
-function seeded_by(x::Some{G}, ::Vector{Bool})::Vector{G} where {G}
-    child_clauses(x)
-end
-
-function seeded_by(x::Many{G}, ::Vector{Bool})::Vector{G} where {G}
-    child_clauses(x)
-end
-
-function seeded_by(x::Tie{G}, ch::Vector{Bool})::Vector{G} where {G}
+function seeded_by(
+    x::Union{First{G},FollowedBy{G},Some{G},Many{G},Tie{G}},
+    ::Vector{Bool},
+)::Vector{G} where {G}
     child_clauses(x)
 end
 
