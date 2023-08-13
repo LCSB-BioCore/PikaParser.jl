@@ -102,12 +102,18 @@ can_match_epsilon(x::Union{Epsilon,EndOfInput}, ::Vector{Bool}) = true
 can_match_epsilon(x::Seq, ch::Vector{Bool}) = all(ch)
 can_match_epsilon(x::First, ch::Vector{Bool}) =
     isempty(ch) ? false :
-    any(ch[begin:end-1]) ? error("First with non-terminal epsilon match") : last(ch)
+    any(ch[begin:end-1]) ?
+    error(
+        "Subclauses of `First` must never allow an epsilon match other than the last one.",
+    ) : last(ch)
 can_match_epsilon(x::NotFollowedBy, ch::Vector{Bool}) =
-    ch[1] ? error("NotFollowedBy epsilon match") : true
+    ch[1] ? error("Contents of `NotFollowedBy` clause must never allow an epsilon match.") :
+    true
 can_match_epsilon(x::FollowedBy, ch::Vector{Bool}) = ch[1]
-can_match_epsilon(x::Some, ch::Vector{Bool}) = ch[1]
-can_match_epsilon(x::Many, ch::Vector{Bool}) = true
+can_match_epsilon(x::Some, ch::Vector{Bool}) =
+    ch[1] ? error("Contents of `Some` clause must never allow an epsilon match.") : false
+can_match_epsilon(x::Many, ch::Vector{Bool}) =
+    ch[1] ? error("Contents of `Many` clause must never allow an epsilon match.") : true
 can_match_epsilon(x::Tie, ch::Vector{Bool}) = ch[1]
 
 

@@ -72,11 +72,14 @@ function make_grammar(
 
     while !isempty(q)
         cur = pop!(q)
-        emptiable[cur] && continue
-        emptiable[cur] =
+        # Here we could skip the check if emptiable[cur] is already True, but
+        # redoing it actually allows the `can_match_epsilon` implementations to
+        # fail in case the grammar is somehow invalid.
+        cur_is_emptiable =
             can_match_epsilon(clauses[cur], emptiable[child_clauses(clauses[cur])])
-        if emptiable[cur]
-            # there was a flip!
+        if !emptiable[cur] && cur_is_emptiable
+            # There was a flip, force rechecking.
+            emptiable[cur] = cur_is_emptiable
             for pid in parent_clauses[cur]
                 push!(q, pid)
             end
