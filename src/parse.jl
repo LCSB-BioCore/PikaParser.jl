@@ -21,9 +21,11 @@ function lookup_best_match_id!(
             return match_epsilon!(cls, clause, pos, st)
         elseif cls isa Many{Int,T}
             return match_epsilon!(cls, clause, pos, st)
-        else
-            # This is reached rarely in corner cases
+        elseif cls isa Tie{Int,T}
             return match_epsilon!(cls, clause, pos, st)
+        else
+            # This should not be reached.
+            return match_epsilon!(cls, clause, pos, st) # COV_EXCL_LINE
         end
     end
 
@@ -189,8 +191,10 @@ function parse(
             elseif cls isa Tie{Int,T}
                 match_clause!(cls, clause, i, st)
             else
-                # Fallback (execution shouldn't reach here)
-                match_clause!(cls, clause, i, st)
+                # Fallback (execution shouldn't reach here). You might want to
+                # add a warning statement here if you added new clauses and
+                # hunt for performance issues.
+                match_clause!(cls, clause, i, st) # COV_EXCL_LINE
             end
             # Shame ends here.
         end
