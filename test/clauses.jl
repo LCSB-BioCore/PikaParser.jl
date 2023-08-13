@@ -115,3 +115,13 @@ end
     @test P.find_match_at!(p, :x, lastindex(str)) == 0
     @test P.find_match_at!(p, :x, nextind(str, lastindex(str))) != 0
 end
+
+@testset "Invalid epsilon matches are avoided" begin
+    rules = Dict(:x => P.not_followed_by(P.epsilon))
+    @test_throws ErrorException P.make_grammar([:x], P.flatten(rules, Char))
+
+    # thanks go to @CptWesley for bringing this up in
+    # https://github.com/lukehutch/pikaparser/issues/35
+    rules = Dict(:x => P.first(P.token('a'), P.epsilon), :y => P.first(P.seq(:y, :x), :x))
+    @test_throws ErrorException P.make_grammar([:y], P.flatten(rules, Char))
+end
