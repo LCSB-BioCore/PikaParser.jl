@@ -90,6 +90,27 @@ end
     @test_throws DomainError P.flatten(rules, Char)
 end
 
+@testset "Unreachable rules are reported" begin
+    rules = Dict(:xxx => P.seq(:yyy, P.fail), :yyy => P.epsilon, :zzz => P.epsilon)
+
+    @test_throws ErrorException P.make_grammar([:xxx], P.flatten(rules, Char))
+    @test begin
+        # this should simply not throw anything
+        P.make_grammar([:xxx, :zzz], P.flatten(rules, Char))
+        true
+    end
+
+    @test try
+        P.make_grammar([:xxx], P.flatten(rules, Char))
+    catch e
+        b = IOBuffer()
+        showerror(b, e)
+        errorstring = String(take!(b))
+
+        (occursin(":zzz", errorstring) && all(!occursin(errorstring), [":xxx", ":yyy"]))
+    end
+end
+
 @testset "Corner-case epsilon matches" begin
     str = "whateveρ"
 
