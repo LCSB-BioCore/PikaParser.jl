@@ -42,27 +42,13 @@ function make_grammar(
         end
     end
 
-    # if some grammar rules is unreachable from starts, throw an error with detailed information about what rules are unreachable
-    if any(opened .<= 0) # the following code executes only when throwing error, so it doesn't affect runtime efficiency
-        reached::Set = Set(starts)
-        last_n_reached::Integer = 0
-        # uses BFS to compute what rules are reached
-        while length(reached) > last_n_reached
-            last_n_reached = length(reached)
-            for reached_term in reached
-                for child in child_clauses(rules_dict[reached_term])
-                    if child ∉ reached
-                        push!(reached, child)
-                    end
-                end
-            end
-        end
-        # throw the error with detailed information about what rules are unreachable
+    # At this point, all rules should be opened at least once. If some grammar
+    # rules are unreachable from the starts, report them explicitly in the
+    # error message to ease the debugging.
+    if !all(opened .> 0)
+        unreachable_names = map(Base.first, rules)[opened.==0]
         error(
-            "The following grammar rules are unreachable from starts:\n" * join(
-                setdiff(keys(rules_dict), reached) .|> repr,
-                "\n"
-            )
+            "grammar rules not reachable from starts: $(join(repr.(unreachable_names), ", "))",
         )
     end
 
