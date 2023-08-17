@@ -42,7 +42,15 @@ function make_grammar(
         end
     end
 
-    all(opened .> 0) || error("some grammar rules not reachable from starts")
+    # At this point, all rules should be opened at least once. If some grammar
+    # rules are unreachable from the starts, report them explicitly in the
+    # error message to ease the debugging.
+    if !all(opened .> 0)
+        unreachable_names = map(Base.first, rules)[opened.==0]
+        error(
+            "grammar rules not reachable from starts: $(join(repr.(unreachable_names), ", "))",
+        )
+    end
 
     reordered = rules[topo_order]
 
