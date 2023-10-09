@@ -23,7 +23,6 @@ makedocs(
     sitename = "PikaParser.jl",
     linkcheck = false,
     pages = ["README" => "index.md"; example_mds; "Reference" => "reference.md"],
-    strict = [:missing_docs, :cross_references, :example_block],
 )
 
 deploydocs(
