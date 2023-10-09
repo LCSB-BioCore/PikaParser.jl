@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout the pull request code # this checks out the actual branch so that one can commit into it
         if: github.event_name == 'issue_comment'
         env:
