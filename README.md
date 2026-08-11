@@ -13,6 +13,14 @@ Pika parsers are pretty fast, they are easy to specify, carry the ability to
 unambiguously match all PEG grammars including the left-recursive ones, and
 provide great mechanisms for parsing error recovery.
 
+See also:
+
+- [PikaMacros.jl](https://github.com/impact-basin/PikaMacros.jl) by Henry
+  Eshbaugh adds a very practical front-end for usual parsing&interpretation
+  tasks.
+- The original ["Pika parsing" paper on
+  arXiv](https://arxiv.org/abs/2005.06444)
+
 ## Example
 
 ```julia
